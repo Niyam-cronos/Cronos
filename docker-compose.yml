@@ -1,0 +1,63 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cronos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cronos
+      POSTGRES_PASSWORD: cronos
+      POSTGRES_DB: cronos
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U cronos -d cronos']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: cronos-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: cronos-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@cronos.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - '5050:80'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  face-recognition:
+    build: ./face-recognition
+    container_name: cronos-face
+    restart: unless-stopped
+    ports:
+      - '8000:8000'
+    environment:
+      FACE_MODEL: buffalo_l
+      FACE_SIMILARITY_THRESHOLD: '0.4'
+
+volumes:
+  postgres_data:
+  redis_data:
+  pgadmin_data:

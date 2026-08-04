@@ -1,0 +1,23 @@
+{
+  "name": "cronos",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Workforce Attendance & HRMS",
+  "scripts": {
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:mobile": "npm run dev --prefix mobile-app",
+    "build:frontend": "npm run build --prefix frontend",
+    "build:backend": "npm run build --prefix backend",
+    "install:all": "npm install --prefix frontend && npm install --prefix backend && npm install --prefix mobile-app",
+    "db:generate": "npm run db:generate --prefix backend",
+    "db:migrate": "npm run db:migrate --prefix backend",
+    "db:seed": "npm run db:seed --prefix backend",
+    "db:studio": "npm run db:studio --prefix backend",
+    "db:setup": "bash scripts/setup-local-db.sh",
+    "face:dev": "cd face-recognition && uvicorn main:app --reload --port 8000"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
