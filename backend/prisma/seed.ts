@@ -116,19 +116,22 @@ async function main() {
     create: { companyId: company.id, name: 'Casual Leave', code: 'CL', daysPerYear: 12, isCarryForward: true, isPaid: true },
   });
 
-  await prisma.leavePolicy.upsert({
-    where: { companyId: company.id },
-    update: {},
-    create: {
-      companyId: company.id,
-      name: 'Default Leave Policy',
-      annualLeaveDays: 12,
-      monthlyAccrualDays: 1,
-      carryForwardEnabled: true,
-      accrualFromJoinDate: true,
-      isActive: true,
-    },
+  const defaultLeavePolicy = await prisma.leavePolicy.findFirst({
+    where: { companyId: company.id, departmentId: null },
   });
+  if (!defaultLeavePolicy) {
+    await prisma.leavePolicy.create({
+      data: {
+        companyId: company.id,
+        name: 'Default Leave Policy',
+        annualLeaveDays: 12,
+        monthlyAccrualDays: 1,
+        carryForwardEnabled: true,
+        accrualFromJoinDate: true,
+        isActive: true,
+      },
+    });
+  }
 
   await prisma.officeLocation.upsert({
     where: { id: 'seed-hq-office' },
@@ -145,26 +148,27 @@ async function main() {
     },
   });
 
-  await prisma.attendancePolicy.upsert({
-    where: { companyId: company.id },
-    update: {},
-    create: {
-      companyId: company.id,
-      name: 'Default Attendance Policy',
-      shiftStartTime: '09:00',
-      graceMinutes: 15,
-      lateAfterTime: '09:30',
-      lateOccurrenceLimit: 3,
-      evaluationPeriod: 'MONTHLY',
-      penaltyType: 'HALF_DAY',
-      isActive: true,
-    },
+  const defaultAttendancePolicy = await prisma.attendancePolicy.findFirst({
+    where: { companyId: company.id, departmentId: null },
   });
+  if (!defaultAttendancePolicy) {
+    await prisma.attendancePolicy.create({
+      data: {
+        companyId: company.id,
+        name: 'Default Attendance Policy',
+        shiftStartTime: '09:00',
+        graceMinutes: 15,
+        lateAfterTime: '09:30',
+        lateOccurrenceLimit: 3,
+        evaluationPeriod: 'MONTHLY',
+        penaltyType: 'HALF_DAY',
+        isActive: true,
+      },
+    });
+  }
 
   const users = [
     { email: 'admin@cronos.com', password: 'Admin@123', firstName: 'Admin', lastName: 'User', role: 'admin', code: 'EMP001' },
-    { email: 'hr@cronos.com', password: 'Hr@12345', firstName: 'HR', lastName: 'Manager', role: 'hr', code: 'EMP002' },
-    { email: 'employee@cronos.com', password: 'Employee@123', firstName: 'John', lastName: 'Doe', role: 'employee', code: 'EMP003' },
   ];
 
   for (const u of users) {

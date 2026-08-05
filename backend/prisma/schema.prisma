@@ -32,6 +32,7 @@ model User {
   refreshTokens      RefreshToken[]
   emailVerifications EmailVerification[]
   passwordResets     PasswordReset[]
+  loginOtps          LoginOtp[]
   userRoles          UserRole[]
   loginHistory       LoginHistory[]
   auditLogs          AuditLog[]
@@ -91,6 +92,20 @@ model PasswordReset {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("password_resets")
+}
+
+model LoginOtp {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  code      String
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("login_otps")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -193,8 +208,8 @@ model Company {
   assets           Asset[]
   notifications    Notification[]
   payrolls         Payroll[]
-  attendancePolicy AttendancePolicy?
-  leavePolicy      LeavePolicy?
+  attendancePolicies AttendancePolicy[]
+  leavePolicies      LeavePolicy[]
 
   @@map("companies")
 }
@@ -269,10 +284,12 @@ model Department {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  company   Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  parent    Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
-  children  Department[] @relation("DepartmentHierarchy")
-  employees Employee[]
+  company            Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  parent             Department?         @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children           Department[]        @relation("DepartmentHierarchy")
+  employees          Employee[]
+  leavePolicies      LeavePolicy[]
+  attendancePolicies AttendancePolicy[]
 
   @@unique([companyId, code])
   @@map("departments")
@@ -391,8 +408,9 @@ model ShiftType {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   attendances Attendance[]
+  employees Employee[]
 
   @@unique([companyId, code])
   @@map("shift_types")
@@ -472,6 +490,7 @@ model Employee {
   departmentId     String?   @map("department_id")
   designationId    String?   @map("designation_id")
   employmentTypeId String?   @map("employment_type_id")
+  defaultShiftId   String?   @map("default_shift_id")
   employeeCode     String    @map("employee_code")
   firstName        String    @map("first_name")
   lastName         String    @map("last_name")
@@ -491,6 +510,7 @@ model Employee {
   department     Department?     @relation(fields: [departmentId], references: [id])
   designation    Designation?    @relation(fields: [designationId], references: [id])
   employmentType EmploymentType? @relation(fields: [employmentTypeId], references: [id])
+  defaultShift   ShiftType?      @relation(fields: [defaultShiftId], references: [id])
   reportingTo    Employee?       @relation("EmployeeReports", fields: [reportingToId], references: [id])
   directReports  Employee[]      @relation("EmployeeReports")
   user           User?
@@ -673,7 +693,8 @@ model Attendance {
 
 model AttendancePolicy {
   id                  String   @id @default(cuid())
-  companyId           String   @unique @map("company_id")
+  companyId           String   @map("company_id")
+  departmentId        String?  @map("department_id")
   name                String   @default("Default Attendance Policy")
   shiftStartTime      String   @default("09:00") @map("shift_start_time")
   graceMinutes        Int      @default(15) @map("grace_minutes")
@@ -681,12 +702,15 @@ model AttendancePolicy {
   lateOccurrenceLimit Int      @default(3) @map("late_occurrence_limit")
   evaluationPeriod    String   @default("MONTHLY") @map("evaluation_period")
   penaltyType         String   @default("HALF_DAY") @map("penalty_type")
+  penaltiesEnabled    Boolean  @default(true) @map("penalties_enabled")
   isActive            Boolean  @default(true) @map("is_active")
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: Cascade)
 
+  @@unique([companyId, departmentId])
   @@map("attendance_policies")
 }
 
@@ -833,7 +857,8 @@ model LeaveApproval {
 
 model LeavePolicy {
   id                  String   @id @default(cuid())
-  companyId           String   @unique @map("company_id")
+  companyId           String   @map("company_id")
+  departmentId        String?  @map("department_id")
   name                String   @default("Default Leave Policy")
   annualLeaveDays     Float    @default(12) @map("annual_leave_days")
   monthlyAccrualDays  Float    @default(1) @map("monthly_accrual_days")
@@ -844,8 +869,10 @@ model LeavePolicy {
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: Cascade)
 
+  @@unique([companyId, departmentId])
   @@map("leave_policies")
 }
 

@@ -18,6 +18,28 @@ export async function loginUser(email: string, password: string) {
   return res.data.user;
 }
 
+export async function getLoginMethod(email: string): Promise<'otp' | 'password'> {
+  const res = await api.post<{ method: 'otp' | 'password' }>('/api/v1/auth/login-method', { email });
+  if (!res.success || !res.data) throw new Error(res.error || res.message || 'Could not check login method');
+  return res.data.method;
+}
+
+export async function requestLoginOtp(email: string): Promise<{ message: string }> {
+  const res = await api.post<{ message: string }>('/api/v1/auth/request-otp', { email });
+  if (!res.success || !res.data) throw new Error(res.error || res.message || 'Could not send code');
+  return res.data;
+}
+
+export async function verifyLoginOtp(email: string, otp: string) {
+  const res = await api.post<{ accessToken: string; refreshToken: string; user: AuthUser }>(
+    '/api/v1/auth/verify-otp',
+    { email, otp }
+  );
+  if (!res.success || !res.data) throw new Error(res.error || res.message || 'Invalid code');
+  setStoredTokens(res.data.accessToken, res.data.refreshToken);
+  return res.data.user;
+}
+
 export async function logoutUser() {
   const tokens = getStoredTokens();
   clearStoredTokens();

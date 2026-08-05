@@ -14,6 +14,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:seed-attendance-demo": "tsx prisma/seed-attendance-demo.ts",
     "db:seed-leave-demo": "tsx prisma/seed-leave-demo.ts",
+    "db:seed-tui": "tsx prisma/seed-tui-employees.ts",
     "worker:email": "tsx src/workers/email.worker.ts"
   },
   "prisma": {

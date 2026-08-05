@@ -43,8 +43,14 @@ leaveRouter.get(
   asyncHandler(async (req: AuthRequest, res) => {
     const { page, pageSize, skip } = getPagination(req.query);
     const where: Record<string, unknown> = { companyId: getCompanyId(req) };
+    const staff = req.user!.permissions.includes('employees.read') || req.user!.permissions.includes('leave.approve');
+    if (!staff) {
+      const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+      if (!user?.employeeId) throw new AppError(400, 'No employee profile linked');
+      where.employeeId = user.employeeId;
+    }
     if (req.query.status) where.status = req.query.status;
-    if (req.query.employeeId) where.employeeId = req.query.employeeId;
+    if (req.query.employeeId && staff) where.employeeId = req.query.employeeId;
     const [items, total] = await Promise.all([
       prisma.leaveRequest.findMany({
         where,

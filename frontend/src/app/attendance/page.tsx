@@ -5,6 +5,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/api';
+import { useAuth } from '@/contexts/auth-context';
+import { isStaffUser } from '@/lib/auth-roles';
+import { formatPersonName } from '@/lib/format-name';
 
 function statusLabel(status: string) {
   return status.replace(/_/g, ' ');
@@ -27,6 +30,8 @@ function statusClass(status: string) {
 
 export default function AttendancePage() {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const staff = isStaffUser(user);
   const [message, setMessage] = useState('');
 
   const { data, isLoading } = useQuery({
@@ -80,8 +85,8 @@ export default function AttendancePage() {
   return (
     <div>
       <PageHeader
-        title="Attendance"
-        description="Check in, check out, and view attendance history"
+        title={staff ? 'Attendance' : 'My Attendance'}
+        description={staff ? 'Company attendance records' : 'Check in, check out, and view your history'}
         actions={
           <div className="flex gap-2">
             <Button onClick={checkIn}>Check In</Button>
@@ -94,7 +99,7 @@ export default function AttendancePage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50 text-left">
-              <th className="p-3">Employee</th>
+              {staff && <th className="p-3">Employee</th>}
               <th className="p-3">Date</th>
               <th className="p-3">Status</th>
               <th className="p-3">Late #</th>
@@ -104,11 +109,13 @@ export default function AttendancePage() {
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={6} className="p-6 text-center">Loading...</td></tr>
+              <tr><td colSpan={staff ? 6 : 5} className="p-6 text-center">Loading...</td></tr>
             ) : (
               data?.items.map((a) => (
                 <tr key={a.id} className="border-b">
-                  <td className="p-3">{a.employee.firstName} {a.employee.lastName}</td>
+                  {staff && (
+                    <td className="p-3">{formatPersonName(a.employee.firstName, a.employee.lastName)}</td>
+                  )}
                   <td className="p-3">{new Date(a.date).toLocaleDateString()}</td>
                   <td className="p-3">
                     <span className={`rounded-full px-2 py-1 text-xs font-medium capitalize ${statusClass(a.status)}`}>

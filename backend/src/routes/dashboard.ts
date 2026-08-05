@@ -6,6 +6,15 @@ import { sendSuccess } from '../utils/response';
 import { getCompanyId } from '../utils/company';
 import { paramId } from '../utils/params';
 
+function isStaffUser(req: AuthRequest): boolean {
+  const roles = req.user!.roles;
+  if (roles.some((r) => ['admin', 'hr', 'manager', 'super_admin'].includes(r))) return true;
+  return (
+    req.user!.permissions.includes('employees.read') ||
+    req.user!.permissions.includes('leave.approve')
+  );
+}
+
 export const dashboardRouter = Router();
 dashboardRouter.use(authenticate, requireCompany, authorize('dashboard.read'));
 
@@ -15,6 +24,49 @@ dashboardRouter.get(
     const companyId = getCompanyId(req);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
+    if (!isStaffUser(req)) {
+      const user = await prisma.user.findUnique({
+        where: { id: req.user!.id },
+        include: {
+          employee: {
+            include: {
+              department: { select: { name: true } },
+              attendances: {
+                where: { date: today },
+                take: 1,
+              },
+              leaveBalances: {
+                where: { year: today.getFullYear() },
+                include: { leaveType: true },
+              },
+              leaveRequests: {
+                where: { status: 'pending' },
+              },
+            },
+          },
+        },
+      });
+
+      const employee = user?.employee;
+      const todayAttendance = employee?.attendances[0];
+      const primaryBalance = employee?.leaveBalances[0];
+
+      sendSuccess(res, {
+        view: 'employee',
+        role: 'employee',
+        department: employee?.department?.name ?? null,
+        todayStatus: todayAttendance?.status ?? 'not_checked_in',
+        checkIn: todayAttendance?.checkIn ?? null,
+        checkOut: todayAttendance?.checkOut ?? null,
+        leaveBalance: primaryBalance?.balance ?? 0,
+        leaveAllocated: primaryBalance?.allocated ?? 0,
+        leaveUsed: primaryBalance?.used ?? 0,
+        leaveTypeName: primaryBalance?.leaveType.name ?? 'Casual Leave',
+        pendingLeaveRequests: employee?.leaveRequests.length ?? 0,
+      });
+      return;
+    }
 
     const [
       totalEmployees,
@@ -40,6 +92,7 @@ dashboardRouter.get(
     ]);
 
     sendSuccess(res, {
+      view: 'staff',
       totalEmployees,
       presentToday,
       onLeaveToday,

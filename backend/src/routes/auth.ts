@@ -37,6 +37,43 @@ authRouter.post(
 );
 
 authRouter.post(
+  '/login-method',
+  validateBody(z.object({ email: z.string().email() })),
+  asyncHandler(async (req, res) => {
+    const data = await authService.getLoginMethod(req.body.email);
+    sendSuccess(res, data);
+  })
+);
+
+authRouter.post(
+  '/request-otp',
+  validateBody(z.object({ email: z.string().email() })),
+  asyncHandler(async (req, res) => {
+    const data = await authService.requestLoginOtp(req.body.email);
+    sendSuccess(res, data, data.message);
+  })
+);
+
+authRouter.post(
+  '/verify-otp',
+  validateBody(
+    z.object({
+      email: z.string().email(),
+      otp: z.string().regex(/^\d{4}$/, 'OTP must be 4 digits'),
+    })
+  ),
+  asyncHandler(async (req, res) => {
+    const data = await authService.verifyLoginOtp(
+      req.body.email,
+      req.body.otp,
+      req.ip,
+      req.headers['user-agent']
+    );
+    sendSuccess(res, data);
+  })
+);
+
+authRouter.post(
   '/refresh',
   validateBody(refreshSchema),
   asyncHandler(async (req, res) => {

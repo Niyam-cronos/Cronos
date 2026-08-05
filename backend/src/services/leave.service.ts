@@ -19,33 +19,65 @@ export interface LeaveSplit {
   availableBalance: number;
 }
 
-export async function getLeavePolicy(companyId: string) {
-  return prisma.leavePolicy.findUnique({ where: { companyId } });
+export async function getLeavePolicy(companyId: string, departmentId?: string | null) {
+  if (departmentId) {
+    const deptPolicy = await prisma.leavePolicy.findFirst({
+      where: { companyId, departmentId, isActive: true },
+    });
+    if (deptPolicy) return deptPolicy;
+  }
+  return prisma.leavePolicy.findFirst({
+    where: { companyId, departmentId: null, isActive: true },
+  });
+}
+
+async function upsertLeavePolicyByScope(
+  companyId: string,
+  departmentId: string | null,
+  input: LeavePolicyInput
+) {
+  const existing = await prisma.leavePolicy.findFirst({
+    where: { companyId, departmentId },
+  });
+
+  const data = {
+    name: input.name ?? (departmentId ? 'Department Leave Policy' : 'Default Leave Policy'),
+    annualLeaveDays: input.annualLeaveDays,
+    monthlyAccrualDays: input.monthlyAccrualDays,
+    carryForwardEnabled: input.carryForwardEnabled ?? true,
+    maxCarryForwardDays: input.maxCarryForwardDays ?? null,
+    accrualFromJoinDate: input.accrualFromJoinDate ?? true,
+    isActive: input.isActive ?? true,
+  };
+
+  if (existing) {
+    return prisma.leavePolicy.update({ where: { id: existing.id }, data });
+  }
+
+  return prisma.leavePolicy.create({
+    data: { companyId, departmentId, ...data },
+  });
+}
+
+export async function resolveLeavePolicyForEmployee(companyId: string, employeeId: string) {
+  const employee = await prisma.employee.findUnique({
+    where: { id: employeeId },
+    select: { departmentId: true },
+  });
+
+  return getLeavePolicy(companyId, employee?.departmentId ?? null);
 }
 
 export async function upsertLeavePolicy(companyId: string, input: LeavePolicyInput) {
-  return prisma.leavePolicy.upsert({
-    where: { companyId },
-    create: {
-      companyId,
-      name: input.name ?? 'Default Leave Policy',
-      annualLeaveDays: input.annualLeaveDays,
-      monthlyAccrualDays: input.monthlyAccrualDays,
-      carryForwardEnabled: input.carryForwardEnabled ?? true,
-      maxCarryForwardDays: input.maxCarryForwardDays ?? null,
-      accrualFromJoinDate: input.accrualFromJoinDate ?? true,
-      isActive: input.isActive ?? true,
-    },
-    update: {
-      name: input.name ?? 'Default Leave Policy',
-      annualLeaveDays: input.annualLeaveDays,
-      monthlyAccrualDays: input.monthlyAccrualDays,
-      carryForwardEnabled: input.carryForwardEnabled ?? true,
-      maxCarryForwardDays: input.maxCarryForwardDays ?? null,
-      accrualFromJoinDate: input.accrualFromJoinDate ?? true,
-      isActive: input.isActive ?? true,
-    },
-  });
+  return upsertLeavePolicyByScope(companyId, null, input);
+}
+
+export async function upsertDepartmentLeavePolicy(
+  companyId: string,
+  departmentId: string,
+  input: LeavePolicyInput
+) {
+  return upsertLeavePolicyByScope(companyId, departmentId, input);
 }
 
 function getLeaveYearStartDate(leaveYearStart: string, referenceDate: Date): Date {
@@ -129,7 +161,7 @@ export async function syncEmployeeLeaveBalance(
   referenceDate: Date = new Date()
 ) {
   const [policy, employee, companySettings, leaveType] = await Promise.all([
-    prisma.leavePolicy.findFirst({ where: { companyId, isActive: true } }),
+    resolveLeavePolicyForEmployee(companyId, employeeId),
     prisma.employee.findUnique({ where: { id: employeeId } }),
     prisma.companySetting.findUnique({ where: { companyId } }),
     prisma.leaveType.findUnique({ where: { id: leaveTypeId } }),

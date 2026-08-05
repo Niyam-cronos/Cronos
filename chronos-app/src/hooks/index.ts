@@ -1,0 +1,1 @@
+export { useAppSplash } from './useAppSplash';

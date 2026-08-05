@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
+import { formatPersonName } from '@/lib/format-name';
 
 export default function LeavePage() {
   const { user } = useAuth();
@@ -101,11 +102,11 @@ export default function LeavePage() {
   return (
     <div>
       <PageHeader
-        title="Leave Management"
+        title={canApprove ? 'Leave Management' : 'My Leave'}
         description={
           canApprove
             ? 'Review pending requests — approve or reject. Paid vs LOP is calculated automatically.'
-            : 'Monthly accrual with carry-forward. Excess days = loss of pay.'
+            : 'Apply for leave and track your requests.'
         }
       />
 
@@ -190,7 +191,7 @@ export default function LeavePage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50 text-left">
-              <th className="p-3">Employee</th>
+              {canApprove && <th className="p-3">Employee</th>}
               <th className="p-3">Type</th>
               <th className="p-3">Dates</th>
               <th className="p-3">Days</th>
@@ -206,7 +207,9 @@ export default function LeavePage() {
             ) : (
               data?.items.map((l) => (
                 <tr key={l.id} className="border-b">
-                  <td className="p-3">{l.employee.firstName} {l.employee.lastName}</td>
+                  {canApprove && (
+                    <td className="p-3">{formatPersonName(l.employee.firstName, l.employee.lastName)}</td>
+                  )}
                   <td className="p-3">{l.leaveType.name}</td>
                   <td className="p-3">
                     {new Date(l.startDate).toLocaleDateString()} – {new Date(l.endDate).toLocaleDateString()}

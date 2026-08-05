@@ -144,7 +144,7 @@ pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 
 # Terminal 4 — Mobile (optional)
-cd mobile-app && npm run dev
+cd chronos-app && npm run start
 ```
 
 | Service | URL |

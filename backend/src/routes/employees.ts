@@ -56,7 +56,12 @@ employeesRouter.get(
         skip,
         take: pageSize,
         orderBy: { firstName: 'asc' },
-        include: { department: true, designation: true, branch: true },
+        include: {
+          department: true,
+          designation: true,
+          branch: true,
+          user: { include: { userRoles: { include: { role: true } } } },
+        },
       }),
       prisma.employee.count({ where }),
     ]);

@@ -68,6 +68,16 @@ export function buildPasswordResetEmail(name: string, resetUrl: string): string 
   `;
 }
 
+export function buildLoginOtpEmail(name: string, otp: string): string {
+  return `
+    <h2>Your Cronos Login Code</h2>
+    <p>Hi ${name},</p>
+    <p>Use this 4-digit code to sign in. It expires in 10 minutes.</p>
+    <p style="font-size: 28px; font-weight: bold; letter-spacing: 6px;">${otp}</p>
+    <p>If you didn't request this, ignore this email.</p>
+  `;
+}
+
 export function buildLeaveStatusEmail(
   name: string,
   status: string,

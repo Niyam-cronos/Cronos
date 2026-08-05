@@ -15,9 +15,11 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
+import { isStaffUser } from '@/lib/auth-roles';
+import { formatPersonName } from '@/lib/format-name';
 import { cn } from '@/lib/utils';
 
-const nav = [
+const staffNav = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/employees', label: 'Employees', icon: Users },
   { href: '/attendance', label: 'Attendance', icon: Clock },
@@ -26,10 +28,18 @@ const nav = [
   { href: '/settings/company', label: 'Settings', icon: Settings },
 ];
 
+const employeeNav = [
+  { href: '/dashboard', label: 'My Dashboard', icon: LayoutDashboard },
+  { href: '/attendance', label: 'My Attendance', icon: Clock },
+  { href: '/leave', label: 'My Leave', icon: CalendarDays },
+];
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
+  const staff = isStaffUser(user);
+  const nav = staff ? staffNav : employeeNav;
 
   return (
     <div className="flex min-h-screen bg-muted/30">
@@ -62,8 +72,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
         <div className="absolute bottom-0 w-full border-t p-4">
+          <p className="mb-1 truncate text-sm font-medium">
+            {formatPersonName(user?.firstName ?? '', user?.lastName)}
+          </p>
           <p className="mb-2 truncate text-xs text-muted-foreground">
-            {user?.firstName} {user?.lastName}
+            {staff ? (user?.roles.includes('hr') ? 'HR' : user?.roles[0] ?? 'Staff') : 'Employee'}
           </p>
           <button
             onClick={logout}

@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import type { AuthUser } from '@/lib/types';
 import { fetchMe, logoutUser } from '@/lib/api';
 import { getStoredTokens } from '@/lib/auth-storage';
+import { isEmployeeUser, isStaffOnlyPath } from '@/lib/auth-roles';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -48,6 +49,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const isPublic = PUBLIC_PATHS.includes(pathname);
     if (!user && !isPublic) router.replace('/login');
     if (user && pathname === '/login') router.replace('/dashboard');
+    if (user && isEmployeeUser(user) && isStaffOnlyPath(pathname)) {
+      router.replace('/dashboard');
+    }
   }, [user, loading, pathname, router]);
 
   const logout = async () => {

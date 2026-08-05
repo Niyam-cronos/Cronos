@@ -25,29 +25,37 @@ async function main() {
   const designation = await prisma.designation.findFirst({ where: { companyId: company.id, code: 'SE' } });
   const employeeRole = await prisma.role.findFirst({ where: { companyId: company.id, slug: 'employee' } });
 
-  await prisma.attendancePolicy.upsert({
-    where: { companyId: company.id },
-    update: {
-      shiftStartTime: '09:00',
-      graceMinutes: 15,
-      lateAfterTime: '09:30',
-      lateOccurrenceLimit: 3,
-      evaluationPeriod: 'MONTHLY',
-      penaltyType: 'HALF_DAY',
-      isActive: true,
-    },
-    create: {
-      companyId: company.id,
-      name: 'Default Attendance Policy',
-      shiftStartTime: '09:00',
-      graceMinutes: 15,
-      lateAfterTime: '09:30',
-      lateOccurrenceLimit: 3,
-      evaluationPeriod: 'MONTHLY',
-      penaltyType: 'HALF_DAY',
-      isActive: true,
-    },
+  const existingPolicy = await prisma.attendancePolicy.findFirst({
+    where: { companyId: company.id, departmentId: null },
   });
+  if (existingPolicy) {
+    await prisma.attendancePolicy.update({
+      where: { id: existingPolicy.id },
+      data: {
+        shiftStartTime: '09:00',
+        graceMinutes: 15,
+        lateAfterTime: '09:30',
+        lateOccurrenceLimit: 3,
+        evaluationPeriod: 'MONTHLY',
+        penaltyType: 'HALF_DAY',
+        isActive: true,
+      },
+    });
+  } else {
+    await prisma.attendancePolicy.create({
+      data: {
+        companyId: company.id,
+        name: 'Default Attendance Policy',
+        shiftStartTime: '09:00',
+        graceMinutes: 15,
+        lateAfterTime: '09:30',
+        lateOccurrenceLimit: 3,
+        evaluationPeriod: 'MONTHLY',
+        penaltyType: 'HALF_DAY',
+        isActive: true,
+      },
+    });
+  }
 
   const rahul = await prisma.employee.upsert({
     where: { companyId_email: { companyId: company.id, email: 'rahul.sharma@gyroitsolutions.com' } },

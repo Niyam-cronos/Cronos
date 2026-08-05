@@ -19,24 +19,32 @@ async function main() {
   const leaveType = await prisma.leaveType.findFirst({ where: { companyId: company.id, code: 'CL' } });
   if (!leaveType) throw new Error('Casual Leave type not found');
 
-  await prisma.leavePolicy.upsert({
-    where: { companyId: company.id },
-    update: {
-      annualLeaveDays: 12,
-      monthlyAccrualDays: 1,
-      carryForwardEnabled: true,
-      isActive: true,
-    },
-    create: {
-      companyId: company.id,
-      name: 'Default Leave Policy',
-      annualLeaveDays: 12,
-      monthlyAccrualDays: 1,
-      carryForwardEnabled: true,
-      accrualFromJoinDate: true,
-      isActive: true,
-    },
+  const existingLeavePolicy = await prisma.leavePolicy.findFirst({
+    where: { companyId: company.id, departmentId: null },
   });
+  if (existingLeavePolicy) {
+    await prisma.leavePolicy.update({
+      where: { id: existingLeavePolicy.id },
+      data: {
+        annualLeaveDays: 12,
+        monthlyAccrualDays: 1,
+        carryForwardEnabled: true,
+        isActive: true,
+      },
+    });
+  } else {
+    await prisma.leavePolicy.create({
+      data: {
+        companyId: company.id,
+        name: 'Default Leave Policy',
+        annualLeaveDays: 12,
+        monthlyAccrualDays: 1,
+        carryForwardEnabled: true,
+        accrualFromJoinDate: true,
+        isActive: true,
+      },
+    });
+  }
 
   const priya = await prisma.employee.upsert({
     where: { companyId_email: { companyId: company.id, email: 'priya.mehta@gyroitsolutions.com' } },

@@ -27,6 +27,11 @@ export async function performCheckIn(
   const now = new Date();
   const evaluation = await evaluateCheckIn(companyId, employeeId, now);
 
+  const employee = await prisma.employee.findUnique({
+    where: { id: employeeId },
+    select: { defaultShiftId: true },
+  });
+
   const notes =
     evaluation.policyTriggered && evaluation.penaltyType === 'SALARY_DEDUCTION'
       ? 'Salary deduction flagged per attendance policy'
@@ -37,6 +42,7 @@ export async function performCheckIn(
     status: evaluation.status,
     lateMinutes: evaluation.lateMinutes,
     lateCount: evaluation.lateCount > 0 ? evaluation.lateCount : null,
+    shiftId: employee?.defaultShiftId ?? undefined,
     notes,
   };
 

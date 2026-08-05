@@ -26,6 +26,7 @@ export interface AttendancePolicyInput {
   lateOccurrenceLimit: number;
   evaluationPeriod: string;
   penaltyType: string;
+  penaltiesEnabled?: boolean;
   isActive?: boolean;
 }
 
@@ -49,35 +50,67 @@ const PERIOD_LABELS: Record<string, string> = {
   QUARTERLY: 'Quarterly',
 };
 
-export async function getAttendancePolicy(companyId: string) {
-  return prisma.attendancePolicy.findUnique({ where: { companyId } });
+export async function getAttendancePolicy(companyId: string, departmentId?: string | null) {
+  if (departmentId) {
+    const deptPolicy = await prisma.attendancePolicy.findFirst({
+      where: { companyId, departmentId, isActive: true },
+    });
+    if (deptPolicy) return deptPolicy;
+  }
+  return prisma.attendancePolicy.findFirst({
+    where: { companyId, departmentId: null, isActive: true },
+  });
+}
+
+async function upsertAttendancePolicyByScope(
+  companyId: string,
+  departmentId: string | null,
+  input: AttendancePolicyInput
+) {
+  const existing = await prisma.attendancePolicy.findFirst({
+    where: { companyId, departmentId },
+  });
+
+  const data = {
+    name: input.name ?? (departmentId ? 'Department Attendance Policy' : 'Default Attendance Policy'),
+    shiftStartTime: input.shiftStartTime,
+    graceMinutes: input.graceMinutes,
+    lateAfterTime: input.lateAfterTime,
+    lateOccurrenceLimit: input.lateOccurrenceLimit,
+    evaluationPeriod: input.evaluationPeriod,
+    penaltyType: input.penaltyType,
+    penaltiesEnabled: input.penaltiesEnabled ?? true,
+    isActive: input.isActive ?? true,
+  };
+
+  if (existing) {
+    return prisma.attendancePolicy.update({ where: { id: existing.id }, data });
+  }
+
+  return prisma.attendancePolicy.create({
+    data: { companyId, departmentId, ...data },
+  });
+}
+
+export async function resolveAttendancePolicyForEmployee(companyId: string, employeeId: string) {
+  const employee = await prisma.employee.findUnique({
+    where: { id: employeeId },
+    select: { departmentId: true },
+  });
+
+  return getAttendancePolicy(companyId, employee?.departmentId ?? null);
 }
 
 export async function upsertAttendancePolicy(companyId: string, input: AttendancePolicyInput) {
-  return prisma.attendancePolicy.upsert({
-    where: { companyId },
-    create: {
-      companyId,
-      name: input.name ?? 'Default Attendance Policy',
-      shiftStartTime: input.shiftStartTime,
-      graceMinutes: input.graceMinutes,
-      lateAfterTime: input.lateAfterTime,
-      lateOccurrenceLimit: input.lateOccurrenceLimit,
-      evaluationPeriod: input.evaluationPeriod,
-      penaltyType: input.penaltyType,
-      isActive: input.isActive ?? true,
-    },
-    update: {
-      name: input.name ?? 'Default Attendance Policy',
-      shiftStartTime: input.shiftStartTime,
-      graceMinutes: input.graceMinutes,
-      lateAfterTime: input.lateAfterTime,
-      lateOccurrenceLimit: input.lateOccurrenceLimit,
-      evaluationPeriod: input.evaluationPeriod,
-      penaltyType: input.penaltyType,
-      isActive: input.isActive ?? true,
-    },
-  });
+  return upsertAttendancePolicyByScope(companyId, null, input);
+}
+
+export async function upsertDepartmentAttendancePolicy(
+  companyId: string,
+  departmentId: string,
+  input: AttendancePolicyInput
+) {
+  return upsertAttendancePolicyByScope(companyId, departmentId, input);
 }
 
 async function countLateOccurrencesInPeriod(
@@ -117,11 +150,9 @@ export async function evaluateCheckIn(
   });
   const timezone = company?.timezone ?? 'Asia/Kolkata';
 
-  const policy = await prisma.attendancePolicy.findFirst({
-    where: { companyId, isActive: true },
-  });
+  const policy = await resolveAttendancePolicyForEmployee(companyId, employeeId);
 
-  if (!policy) {
+  if (!policy || !policy.penaltiesEnabled) {
     return {
       status: 'present',
       lateMinutes: null,

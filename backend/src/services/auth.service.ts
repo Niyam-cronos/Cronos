@@ -5,9 +5,46 @@ import { generateToken } from '../lib/token';
 import { loadEnv } from '../config/env';
 import { AppError } from '../middleware/error-handler';
 import { queueEmail } from '../queues/email.queue';
-import { buildPasswordResetEmail } from './email.service';
+import { buildPasswordResetEmail, buildLoginOtpEmail } from './email.service';
 
 const env = loadEnv();
+const OTP_EXPIRY_MS = 10 * 60 * 1000;
+
+async function userUsesOtpLogin(userId: string): Promise<boolean> {
+  const userRoles = await prisma.userRole.findMany({
+    where: { userId },
+    include: { role: true },
+  });
+  const roles = userRoles.map((ur) => ur.role.slug);
+  if (roles.length === 0) return false;
+  return roles.every((slug) => slug === 'employee');
+}
+
+function generateOtpCode(): string {
+  return String(Math.floor(1000 + Math.random() * 9000));
+}
+
+async function issueAuthTokens(userId: string) {
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+
+  const accessToken = signAccessToken({
+    sub: user.id,
+    email: user.email,
+    companyId: user.companyId,
+  });
+  const refreshToken = signRefreshToken(user.id);
+
+  await prisma.refreshToken.create({
+    data: {
+      userId: user.id,
+      token: refreshToken,
+      expiresAt: new Date(Date.now() + parseExpiresIn(env.JWT_REFRESH_EXPIRES_IN)),
+    },
+  });
+
+  const profile = await getUserAuthProfile(user.id);
+  return { accessToken, refreshToken, user: profile };
+}
 
 async function getUserAuthProfile(userId: string) {
   const user = await prisma.user.findUniqueOrThrow({
@@ -62,23 +99,92 @@ export async function login(
   if (!user || !success) throw new AppError(401, 'Invalid email or password');
   if (!user.isActive) throw new AppError(403, 'Account is deactivated');
 
-  const accessToken = signAccessToken({
-    sub: user.id,
-    email: user.email,
-    companyId: user.companyId,
-  });
-  const refreshToken = signRefreshToken(user.id);
+  if (await userUsesOtpLogin(user.id)) {
+    throw new AppError(400, 'Employees must sign in with the email code sent to their inbox');
+  }
 
-  await prisma.refreshToken.create({
+  return issueAuthTokens(user.id);
+}
+
+export async function getLoginMethod(email: string) {
+  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+  if (!user || !user.isActive) {
+    return { method: 'password' as const };
+  }
+  const usesOtp = await userUsesOtpLogin(user.id);
+  return { method: usesOtp ? ('otp' as const) : ('password' as const) };
+}
+
+export async function requestLoginOtp(email: string) {
+  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+  if (!user || !user.isActive) {
+    return { message: 'If this email is registered, a login code has been sent' };
+  }
+  if (!(await userUsesOtpLogin(user.id))) {
+    throw new AppError(400, 'This account uses password login');
+  }
+
+  const code = generateOtpCode();
+
+  await prisma.loginOtp.updateMany({
+    where: { userId: user.id, usedAt: null },
+    data: { usedAt: new Date() },
+  });
+
+  await prisma.loginOtp.create({
     data: {
       userId: user.id,
-      token: refreshToken,
-      expiresAt: new Date(Date.now() + parseExpiresIn(env.JWT_REFRESH_EXPIRES_IN)),
+      code,
+      expiresAt: new Date(Date.now() + OTP_EXPIRY_MS),
     },
   });
 
-  const profile = await getUserAuthProfile(user.id);
-  return { accessToken, refreshToken, user: profile };
+  await queueEmail({
+    to: user.email,
+    subject: 'Your Cronos login code',
+    html: buildLoginOtpEmail(user.firstName, code),
+    companyId: user.companyId ?? undefined,
+  });
+
+  if (env.NODE_ENV === 'development') {
+    console.log(`[DEV] Login OTP for ${email}: ${code}`);
+  }
+
+  return {
+    message: 'A 4-digit login code has been sent to your email',
+  };
+}
+
+export async function verifyLoginOtp(
+  email: string,
+  otp: string,
+  ipAddress?: string,
+  userAgent?: string
+) {
+  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+  if (!user) throw new AppError(401, 'Invalid email or code');
+
+  const record = await prisma.loginOtp.findFirst({
+    where: {
+      userId: user.id,
+      code: otp,
+      usedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  const success = !!record;
+  await prisma.loginHistory.create({
+    data: { userId: user.id, ipAddress, userAgent, success },
+  });
+
+  if (!success) throw new AppError(401, 'Invalid or expired code');
+  if (!user.isActive) throw new AppError(403, 'Account is deactivated');
+
+  await prisma.loginOtp.update({ where: { id: record!.id }, data: { usedAt: new Date() } });
+
+  return issueAuthTokens(user.id);
 }
 
 export async function refresh(refreshToken: string) {

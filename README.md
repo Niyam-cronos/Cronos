@@ -8,7 +8,7 @@
 cronos/
 ├── frontend/          Next.js web app
 ├── backend/           Express API + Prisma + PostgreSQL
-├── mobile-app/        React Native Expo
+├── chronos-app/       React Native Expo
 ├── face-recognition/  Python FastAPI (InsightFace)
 └── docs/              Setup guides
 ```
@@ -74,7 +74,7 @@ Or use **pgAdmin desktop** — connect to `localhost:5432`, user `cronos`, db `c
 |--------|------|---------|
 | `frontend/` | `.env` | `NEXT_PUBLIC_API_URL` |
 | `backend/` | `.env` | Database, JWT, Redis, SMTP |
-| `mobile-app/` | `.env` | `EXPO_PUBLIC_API_URL` |
+| `chronos-app/` | `.env` | `EXPO_PUBLIC_API_URL` |
 
 ## Root Scripts
 

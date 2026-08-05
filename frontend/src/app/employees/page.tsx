@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { PageHeader } from '@/components/page-header';
 import { apiFetch } from '@/lib/api';
+import { formatPersonName } from '@/lib/format-name';
 
 interface Employee {
   id: string;
@@ -14,6 +15,9 @@ interface Employee {
   status: string;
   department?: { name: string };
   designation?: { name: string };
+  user?: {
+    userRoles?: Array<{ role: { slug: string; name: string } }>;
+  };
 }
 
 interface Paginated<T> {
@@ -46,24 +50,40 @@ export default function EmployeesPage() {
               <th className="p-3">Name</th>
               <th className="p-3">Email</th>
               <th className="p-3">Department</th>
+              <th className="p-3">Role</th>
               <th className="p-3">Status</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">Loading...</td></tr>
+              <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">Loading...</td></tr>
             ) : data?.items.length === 0 ? (
-              <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No employees found</td></tr>
+              <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">No employees found</td></tr>
             ) : (
-              data?.items.map((emp) => (
+              data?.items.map((emp) => {
+                const roleSlug = emp.user?.userRoles?.[0]?.role.slug;
+                const roleLabel =
+                  roleSlug === 'hr'
+                    ? 'HR'
+                    : roleSlug === 'admin'
+                      ? 'Admin'
+                      : roleSlug === 'manager'
+                        ? 'Manager'
+                        : roleSlug
+                          ? 'Employee'
+                          : '—';
+
+                return (
                 <tr key={emp.id} className="border-b hover:bg-muted/30">
                   <td className="p-3">{emp.employeeCode}</td>
-                  <td className="p-3">{emp.firstName} {emp.lastName}</td>
+                  <td className="p-3">{formatPersonName(emp.firstName, emp.lastName)}</td>
                   <td className="p-3">{emp.email}</td>
                   <td className="p-3">{emp.department?.name ?? '—'}</td>
+                  <td className="p-3">{roleLabel}</td>
                   <td className="p-3 capitalize">{emp.status}</td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>
