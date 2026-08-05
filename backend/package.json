@@ -12,6 +12,8 @@
     "db:studio": "prisma studio",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed-attendance-demo": "tsx prisma/seed-attendance-demo.ts",
+    "db:seed-leave-demo": "tsx prisma/seed-leave-demo.ts",
     "worker:email": "tsx src/workers/email.worker.ts"
   },
   "prisma": {

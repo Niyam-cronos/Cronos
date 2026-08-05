@@ -11,6 +11,7 @@ import { paramId } from '../utils/params';
 import { AppError } from '../middleware/error-handler';
 import { validateGeofence } from '../services/geofence.service';
 import * as faceService from '../services/face.service';
+import { performCheckIn } from '../services/attendance.service';
 
 export const attendanceRouter = Router();
 attendanceRouter.use(authenticate, requireCompany);
@@ -37,47 +38,22 @@ attendanceRouter.post(
   validateBody(checkInSchema),
   asyncHandler(async (req: AuthRequest, res) => {
     const employeeId = await resolveEmployeeId(req, req.body.employeeId);
+    const companyId = getCompanyId(req);
 
     if (req.body.requireGeofence || (req.body.latitude != null && req.body.longitude != null)) {
       if (req.body.latitude == null || req.body.longitude == null) {
         throw new AppError(400, 'Location (latitude, longitude) required for geofenced check-in');
       }
-      await validateGeofence(getCompanyId(req), req.body.latitude, req.body.longitude);
+      await validateGeofence(companyId, req.body.latitude, req.body.longitude);
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    let attendance = await prisma.attendance.findUnique({
-      where: { employeeId_date: { employeeId, date: today } },
+    const { attendance, evaluation } = await performCheckIn(companyId, employeeId, {
+      latitude: req.body.latitude,
+      longitude: req.body.longitude,
+      source: req.body.source,
     });
 
-    if (attendance?.checkIn) throw new AppError(400, 'Already checked in today');
-
-    const now = new Date();
-    if (!attendance) {
-      attendance = await prisma.attendance.create({
-        data: { companyId: getCompanyId(req), employeeId, date: today, checkIn: now, status: 'present' },
-      });
-    } else {
-      attendance = await prisma.attendance.update({
-        where: { id: attendance.id },
-        data: { checkIn: now, status: 'present' },
-      });
-    }
-
-    await prisma.attendanceLog.create({
-      data: {
-        attendanceId: attendance.id,
-        type: 'check_in',
-        timestamp: now,
-        latitude: req.body.latitude,
-        longitude: req.body.longitude,
-        source: req.body.source,
-      },
-    });
-
-    sendSuccess(res, attendance, 'Checked in');
+    sendSuccess(res, { attendance, evaluation }, 'Checked in');
   })
 );
 
@@ -91,11 +67,12 @@ attendanceRouter.post(
     if (!req.file) throw new AppError(400, 'Face image required');
 
     const employeeId = await resolveEmployeeId(req, req.body?.employeeId);
+    const companyId = getCompanyId(req);
     const latitude = req.body?.latitude ? parseFloat(req.body.latitude) : undefined;
     const longitude = req.body?.longitude ? parseFloat(req.body.longitude) : undefined;
 
     if (latitude != null && longitude != null) {
-      await validateGeofence(getCompanyId(req), latitude, longitude);
+      await validateGeofence(companyId, latitude, longitude);
     }
 
     const faceResult = await faceService.verifyFaceImage(req.file.buffer, employeeId);
@@ -103,38 +80,13 @@ attendanceRouter.post(
       throw new AppError(403, `Face verification failed (confidence: ${faceResult.confidence})`);
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    let attendance = await prisma.attendance.findUnique({
-      where: { employeeId_date: { employeeId, date: today } },
-    });
-    if (attendance?.checkIn) throw new AppError(400, 'Already checked in today');
-
-    const now = new Date();
-    if (!attendance) {
-      attendance = await prisma.attendance.create({
-        data: { companyId: getCompanyId(req), employeeId, date: today, checkIn: now, status: 'present' },
-      });
-    } else {
-      attendance = await prisma.attendance.update({
-        where: { id: attendance.id },
-        data: { checkIn: now, status: 'present' },
-      });
-    }
-
-    await prisma.attendanceLog.create({
-      data: {
-        attendanceId: attendance.id,
-        type: 'check_in',
-        timestamp: now,
-        latitude,
-        longitude,
-        source: 'face_recognition',
-      },
+    const { attendance, evaluation } = await performCheckIn(companyId, employeeId, {
+      latitude,
+      longitude,
+      source: 'face_recognition',
     });
 
-    sendSuccess(res, { attendance, faceVerification: faceResult }, 'Checked in with face verification');
+    sendSuccess(res, { attendance, evaluation, faceVerification: faceResult }, 'Checked in with face verification');
   })
 );
 

@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
+import { hashPassword } from '../lib/password';
+import { generateToken } from '../lib/token';
+import { loadEnv } from '../config/env';
+import { queueEmail } from '../queues/email.queue';
+import { buildWelcomeEmail } from '../services/email.service';
 import { authenticate, authorize, requireCompany, type AuthRequest } from '../middleware/auth';
 import { validateBody, validateQuery } from '../middleware/validate';
 import { asyncHandler } from '../utils/async-handler';
@@ -25,6 +30,7 @@ const employeeSchema = z.object({
   reportingToId: z.string().optional(),
   dateOfJoining: z.string().optional(),
   status: z.string().optional(),
+  createLogin: z.boolean().optional(),
 });
 
 employeesRouter.get(
@@ -63,12 +69,58 @@ employeesRouter.post(
   authorize('employees.create'),
   validateBody(employeeSchema),
   asyncHandler(async (req: AuthRequest, res) => {
+    const companyId = getCompanyId(req);
+    const { createLogin, dateOfJoining, ...rest } = req.body;
     const data = {
-      ...req.body,
-      companyId: getCompanyId(req),
-      dateOfJoining: req.body.dateOfJoining ? new Date(req.body.dateOfJoining) : undefined,
+      ...rest,
+      companyId,
+      dateOfJoining: dateOfJoining ? new Date(dateOfJoining) : undefined,
     };
+
     const employee = await prisma.employee.create({ data });
+
+    if (createLogin) {
+      const existingUser = await prisma.user.findUnique({ where: { email: employee.email } });
+      if (!existingUser) {
+        const tempPassword = generateToken().slice(0, 10);
+        const employeeRole = await prisma.role.findFirst({
+          where: { companyId, slug: 'employee' },
+        });
+
+        const user = await prisma.user.create({
+          data: {
+            email: employee.email,
+            passwordHash: await hashPassword(tempPassword),
+            firstName: employee.firstName,
+            lastName: employee.lastName,
+            companyId,
+            employeeId: employee.id,
+            isActive: true,
+            isVerified: true,
+          },
+        });
+
+        if (employeeRole) {
+          await prisma.userRole.create({
+            data: { userId: user.id, roleId: employeeRole.id },
+          });
+        }
+
+        const loginUrl = `${loadEnv().WEB_URL}/login`;
+        await queueEmail({
+          to: employee.email,
+          subject: 'Welcome to Cronos HRMS',
+          html: buildWelcomeEmail(
+            employee.firstName,
+            employee.email,
+            tempPassword,
+            loginUrl
+          ),
+          companyId,
+        });
+      }
+    }
+
     sendSuccess(res, employee, 'Employee created', 201);
   })
 );

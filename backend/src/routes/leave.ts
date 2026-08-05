@@ -10,6 +10,12 @@ import { paramId } from '../utils/params';
 import { AppError } from '../middleware/error-handler';
 import { queueEmail } from '../queues/email.queue';
 import { buildLeaveStatusEmail } from '../services/email.service';
+import {
+  applyLeaveWithPolicy,
+  approveLeaveRequest,
+  previewLeaveApplication,
+  syncEmployeeLeaveBalance,
+} from '../services/leave.service';
 
 export const leaveRouter = Router();
 leaveRouter.use(authenticate, requireCompany);
@@ -22,6 +28,13 @@ const applyLeaveSchema = z.object({
   reason: z.string().min(1),
   employeeId: z.string().optional(),
 });
+
+async function resolveEmployeeId(req: AuthRequest, overrideId?: string): Promise<string> {
+  if (overrideId && req.user!.permissions.includes('leave.approve')) return overrideId;
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+  if (!user?.employeeId) throw new AppError(400, 'No employee profile linked');
+  return user.employeeId;
+}
 
 leaveRouter.get(
   '/',
@@ -47,29 +60,37 @@ leaveRouter.get(
 );
 
 leaveRouter.post(
+  '/preview',
+  authorize('leave.create'),
+  validateBody(z.object({ leaveTypeId: z.string(), days: z.number().positive(), employeeId: z.string().optional() })),
+  asyncHandler(async (req: AuthRequest, res) => {
+    const employeeId = await resolveEmployeeId(req, req.body.employeeId);
+    const result = await previewLeaveApplication(
+      getCompanyId(req),
+      employeeId,
+      req.body.leaveTypeId,
+      req.body.days
+    );
+    sendSuccess(res, result);
+  })
+);
+
+leaveRouter.post(
   '/apply',
   authorize('leave.create'),
   validateBody(applyLeaveSchema),
   asyncHandler(async (req: AuthRequest, res) => {
-    let employeeId = req.body.employeeId;
-    if (!employeeId) {
-      const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
-      if (!user?.employeeId) throw new AppError(400, 'No employee profile linked');
-      employeeId = user.employeeId;
-    }
-    const leave = await prisma.leaveRequest.create({
-      data: {
-        companyId: getCompanyId(req),
-        employeeId,
-        leaveTypeId: req.body.leaveTypeId,
-        startDate: new Date(req.body.startDate),
-        endDate: new Date(req.body.endDate),
-        days: req.body.days,
-        reason: req.body.reason,
-        status: 'pending',
-      },
+    const employeeId = await resolveEmployeeId(req, req.body.employeeId);
+    const result = await applyLeaveWithPolicy({
+      companyId: getCompanyId(req),
+      employeeId,
+      leaveTypeId: req.body.leaveTypeId,
+      startDate: new Date(req.body.startDate),
+      endDate: new Date(req.body.endDate),
+      days: req.body.days,
+      reason: req.body.reason,
     });
-    sendSuccess(res, leave, 'Leave applied', 201);
+    sendSuccess(res, result, 'Leave applied', 201);
   })
 );
 
@@ -78,34 +99,45 @@ leaveRouter.patch(
   authorize('leave.approve'),
   validateBody(z.object({ status: z.enum(['approved', 'rejected']), comments: z.string().optional() })),
   asyncHandler(async (req: AuthRequest, res) => {
+    const companyId = getCompanyId(req);
     const leave = await prisma.leaveRequest.findFirst({
-      where: { id: paramId(req), companyId: getCompanyId(req) },
+      where: { id: paramId(req), companyId },
       include: { employee: true },
     });
     if (!leave) throw new AppError(404, 'Leave request not found');
 
-    const [updated] = await prisma.$transaction([
-      prisma.leaveRequest.update({
+    let updated;
+    if (req.body.status === 'approved') {
+      updated = await approveLeaveRequest(leave.id, companyId);
+    } else {
+      updated = await prisma.leaveRequest.update({
         where: { id: leave.id },
-        data: { status: req.body.status },
-      }),
-      prisma.leaveApproval.create({
-        data: {
-          leaveRequestId: leave.id,
-          approverId: req.user!.id,
-          status: req.body.status,
-          comments: req.body.comments,
-        },
-      }),
-      prisma.leaveHistory.create({
-        data: {
-          leaveRequestId: leave.id,
-          action: req.body.status,
-          performedBy: req.user!.id,
-          notes: req.body.comments,
-        },
-      }),
-    ]);
+        data: { status: 'rejected' },
+      });
+    }
+
+    await prisma.leaveApproval.create({
+      data: {
+        leaveRequestId: leave.id,
+        approverId: req.user!.id,
+        status: req.body.status,
+        comments: req.body.comments,
+      },
+    });
+
+    await prisma.leaveHistory.create({
+      data: {
+        leaveRequestId: leave.id,
+        action: req.body.status,
+        performedBy: req.user!.id,
+        notes: req.body.comments,
+      },
+    });
+
+    const paidInfo =
+      leave.paidDays > 0 || leave.lopDays > 0
+        ? ` Paid: ${leave.paidDays} day(s), Loss of Pay: ${leave.lopDays} day(s).`
+        : '';
 
     await queueEmail({
       to: leave.employee.email,
@@ -114,25 +146,41 @@ leaveRouter.patch(
         leave.employee.firstName,
         req.body.status,
         leave.startDate.toLocaleDateString(),
-        leave.endDate.toLocaleDateString()
+        leave.endDate.toLocaleDateString(),
+        leave.paidDays,
+        leave.lopDays
       ),
-      companyId: getCompanyId(req),
+      companyId,
     });
 
-    sendSuccess(res, updated);
+    sendSuccess(res, { ...updated, message: paidInfo.trim() });
   })
 );
 
 leaveRouter.get(
   '/balances',
   authorize('leave.read'),
-  validateQuery(z.object({ employeeId: z.string().optional() })),
+  validateQuery(z.object({ employeeId: z.string().optional(), leaveTypeId: z.string().optional() })),
   asyncHandler(async (req: AuthRequest, res) => {
-    const employeeId = (req.query.employeeId as string) || req.user!.id;
-    const balances = await prisma.leaveBalance.findMany({
-      where: { employeeId },
-      include: { leaveType: true },
-    });
+    const companyId = getCompanyId(req);
+    let employeeId = req.query.employeeId as string | undefined;
+
+    if (!employeeId) {
+      const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+      employeeId = user?.employeeId ?? undefined;
+    }
+    if (!employeeId) throw new AppError(400, 'Employee not found');
+
+    const leaveTypes = req.query.leaveTypeId
+      ? [await prisma.leaveType.findUnique({ where: { id: req.query.leaveTypeId as string } })]
+      : await prisma.leaveType.findMany({ where: { companyId, isActive: true } });
+
+    const balances = [];
+    for (const lt of leaveTypes) {
+      if (!lt) continue;
+      balances.push(await syncEmployeeLeaveBalance(companyId, employeeId, lt.id));
+    }
+
     sendSuccess(res, balances);
   })
 );

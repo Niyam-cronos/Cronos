@@ -14,7 +14,7 @@ export default function CompanySettingsPage() {
 
   return (
     <div>
-      <PageHeader title="Company Settings" description="Manage company profile and branches" />
+      <PageHeader title="Company Profile" description="Manage company profile and branches" />
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-lg border bg-card p-6">
           <h3 className="font-semibold">Company Profile</h3>

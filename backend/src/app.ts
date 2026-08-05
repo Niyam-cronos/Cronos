@@ -13,6 +13,7 @@ import { attendanceRouter } from './routes/attendance';
 import { leaveRouter } from './routes/leave';
 import { dashboardRouter, notificationsRouter } from './routes/dashboard';
 import { faceRouter } from './routes/face';
+import { settingsRouter } from './routes/settings';
 import { errorHandler } from './middleware/error-handler';
 
 export function createApp() {
@@ -36,6 +37,7 @@ export function createApp() {
   app.use('/api/v1/dashboard', dashboardRouter);
   app.use('/api/v1/notifications', notificationsRouter);
   app.use('/api/v1/face', faceRouter);
+  app.use('/api/v1/settings', settingsRouter);
 
   app.use(errorHandler);
 

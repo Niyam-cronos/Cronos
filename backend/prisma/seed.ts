@@ -35,7 +35,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'employees.read', 'employees.create', 'employees.update', 'employees.delete',
     'attendance.read', 'attendance.create', 'attendance.approve',
     'leave.read', 'leave.create', 'leave.approve',
-    'dashboard.read', 'reports.read', 'settings.read',
+    'dashboard.read', 'reports.read', 'settings.read', 'settings.update',
   ],
   manager: [
     'company.read', 'masters.read', 'employees.read',
@@ -112,11 +112,24 @@ async function main() {
 
   const leaveType = await prisma.leaveType.upsert({
     where: { companyId_code: { companyId: company.id, code: 'CL' } },
-    update: {},
-    create: { companyId: company.id, name: 'Casual Leave', code: 'CL', daysPerYear: 12 },
+    update: { daysPerYear: 12, isCarryForward: true, isPaid: true },
+    create: { companyId: company.id, name: 'Casual Leave', code: 'CL', daysPerYear: 12, isCarryForward: true, isPaid: true },
   });
 
-  // Office location for GPS geofence testing (Mumbai HQ)
+  await prisma.leavePolicy.upsert({
+    where: { companyId: company.id },
+    update: {},
+    create: {
+      companyId: company.id,
+      name: 'Default Leave Policy',
+      annualLeaveDays: 12,
+      monthlyAccrualDays: 1,
+      carryForwardEnabled: true,
+      accrualFromJoinDate: true,
+      isActive: true,
+    },
+  });
+
   await prisma.officeLocation.upsert({
     where: { id: 'seed-hq-office' },
     update: {},
@@ -128,6 +141,22 @@ async function main() {
       latitude: 19.0596,
       longitude: 72.8656,
       radius: 500,
+      isActive: true,
+    },
+  });
+
+  await prisma.attendancePolicy.upsert({
+    where: { companyId: company.id },
+    update: {},
+    create: {
+      companyId: company.id,
+      name: 'Default Attendance Policy',
+      shiftStartTime: '09:00',
+      graceMinutes: 15,
+      lateAfterTime: '09:30',
+      lateOccurrenceLimit: 3,
+      evaluationPeriod: 'MONTHLY',
+      penaltyType: 'HALF_DAY',
       isActive: true,
     },
   });

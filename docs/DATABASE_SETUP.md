@@ -172,6 +172,38 @@ Face enrollment images are stored locally under `backend/uploads/`. The API serv
 
 ---
 
+## SMTP (Google Workspace)
+
+Configure email in the app:
+
+```
+Settings → SMTP
+```
+
+Recommended values for Gyroit:
+
+| Field | Value |
+|-------|-------|
+| SMTP Host | `smtp.gmail.com` |
+| SMTP Port | `587` |
+| Username | `tejravi@gyroitsolutions.com` (or `hr@gyroitsolutions.com`) |
+| Password | Google **App Password** (not normal Gmail password) |
+| From Name | `Gyroit HR` |
+| From Email | `tejravi@gyroitsolutions.com` |
+| Reply To | `tejravi@gyroitsolutions.com` |
+
+### Google App Password steps
+
+1. Sign in at [myaccount.google.com](https://myaccount.google.com) with your Workspace account
+2. Enable **2-Step Verification** under Security
+3. Create an **App Password** under Security → App Passwords → Mail → Other → `HRMS`
+4. Paste the 16-character password into **Settings → SMTP** in Cronos
+5. Click **Save**, then **Test SMTP**
+
+Emails are sent to each user's address stored in Cronos (login email for password reset, employee email for leave notifications).
+
+---
+
 ## SMTP (emails)
 
 Leave SMTP blank in dev — emails print in the backend terminal.

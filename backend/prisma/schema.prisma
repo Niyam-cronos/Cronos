@@ -193,6 +193,8 @@ model Company {
   assets           Asset[]
   notifications    Notification[]
   payrolls         Payroll[]
+  attendancePolicy AttendancePolicy?
+  leavePolicy      LeavePolicy?
 
   @@map("companies")
 }
@@ -243,7 +245,9 @@ model SmtpSetting {
   password  String
   fromEmail String  @map("from_email")
   fromName  String? @map("from_name")
+  replyTo   String? @map("reply_to")
   useTls    Boolean @default(true) @map("use_tls")
+  status    String  @default("active")
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
@@ -388,6 +392,7 @@ model ShiftType {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  attendances Attendance[]
 
   @@unique([companyId, code])
   @@map("shift_types")
@@ -637,28 +642,52 @@ model EmployeeExperience {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 model Attendance {
-  id           String   @id @default(cuid())
-  companyId    String   @map("company_id")
-  employeeId   String   @map("employee_id")
-  date         DateTime @db.Date
-  status       String   @default("present")
-  checkIn      DateTime? @map("check_in")
-  checkOut     DateTime? @map("check_out")
-  totalHours   Float?   @map("total_hours")
-  overtimeHours Float?  @map("overtime_hours")
-  notes        String?
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(cuid())
+  companyId     String   @map("company_id")
+  employeeId    String   @map("employee_id")
+  date          DateTime @db.Date
+  status        String   @default("present")
+  checkIn       DateTime? @map("check_in")
+  checkOut      DateTime? @map("check_out")
+  totalHours    Float?   @map("total_hours")
+  overtimeHours Float?   @map("overtime_hours")
+  lateMinutes   Int?     @map("late_minutes")
+  shiftId       String?  @map("shift_id")
+  lateCount     Int?     @map("late_count")
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   company  Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
   employee Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  shift    ShiftType?       @relation(fields: [shiftId], references: [id])
   logs     AttendanceLog[]
   breaks   AttendanceBreak[]
   requests AttendanceRequest[]
 
   @@unique([employeeId, date])
   @@index([companyId, date])
+  @@index([employeeId, status, date])
   @@map("attendance")
+}
+
+model AttendancePolicy {
+  id                  String   @id @default(cuid())
+  companyId           String   @unique @map("company_id")
+  name                String   @default("Default Attendance Policy")
+  shiftStartTime      String   @default("09:00") @map("shift_start_time")
+  graceMinutes        Int      @default(15) @map("grace_minutes")
+  lateAfterTime       String   @default("09:30") @map("late_after_time")
+  lateOccurrenceLimit Int      @default(3) @map("late_occurrence_limit")
+  evaluationPeriod    String   @default("MONTHLY") @map("evaluation_period")
+  penaltyType         String   @default("HALF_DAY") @map("penalty_type")
+  isActive            Boolean  @default(true) @map("is_active")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("attendance_policies")
 }
 
 model AttendanceLog {
@@ -743,6 +772,8 @@ model LeaveRequest {
   startDate   DateTime @map("start_date") @db.Date
   endDate     DateTime @map("end_date") @db.Date
   days        Float
+  paidDays    Float    @default(0) @map("paid_days")
+  lopDays     Float    @default(0) @map("lop_days")
   reason      String
   status      String   @default("pending")
   createdAt   DateTime @default(now()) @map("created_at")
@@ -798,6 +829,24 @@ model LeaveApproval {
   leaveRequest LeaveRequest @relation(fields: [leaveRequestId], references: [id], onDelete: Cascade)
 
   @@map("leave_approvals")
+}
+
+model LeavePolicy {
+  id                  String   @id @default(cuid())
+  companyId           String   @unique @map("company_id")
+  name                String   @default("Default Leave Policy")
+  annualLeaveDays     Float    @default(12) @map("annual_leave_days")
+  monthlyAccrualDays  Float    @default(1) @map("monthly_accrual_days")
+  carryForwardEnabled Boolean  @default(true) @map("carry_forward_enabled")
+  maxCarryForwardDays Float?   @map("max_carry_forward_days")
+  accrualFromJoinDate Boolean  @default(true) @map("accrual_from_join_date")
+  isActive            Boolean  @default(true) @map("is_active")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("leave_policies")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
