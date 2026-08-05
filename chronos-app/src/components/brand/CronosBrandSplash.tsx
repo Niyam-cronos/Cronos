@@ -1,24 +1,20 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Ionicons } from '@expo/vector-icons';
 import { APP } from '@/constants';
 import { colors } from '@/theme';
-import { CronosClockArt } from './CronosClockArt';
+import { ChronosLogo } from './ChronosLogo';
 
 export function CronosBrandSplash() {
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
-      <View style={styles.header}>
-        <Ionicons name="time-outline" size={30} color={colors.white} />
-        <Text style={styles.brand}>{APP.brandLabel}</Text>
-      </View>
+      <View style={styles.decorTop} />
+      <View style={styles.decorBottom} />
 
       <View style={styles.center}>
-        <CronosClockArt />
+        <ChronosLogo size="lg" variant="light" />
+        <Text style={styles.tagline}>{APP.tagline}</Text>
       </View>
-
-      <Text style={styles.tagline}>{APP.tagline}</Text>
     </View>
   );
 }
@@ -26,26 +22,35 @@ export function CronosBrandSplash() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.brand,
+    backgroundColor: colors.brandGradientStart,
     paddingHorizontal: 32,
-    paddingTop: 64,
-    paddingBottom: 48,
+    paddingVertical: 48,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+  decorTop: {
+    position: 'absolute',
+    top: 48,
+    right: 32,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 8,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
-  brand: {
-    color: colors.white,
-    fontSize: 22,
-    fontWeight: '700',
-    letterSpacing: 6,
+  decorBottom: {
+    position: 'absolute',
+    bottom: 80,
+    left: 24,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 8,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 20,
   },
   tagline: {
     textAlign: 'center',
@@ -53,5 +58,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '300',
     letterSpacing: 0.5,
+    marginTop: 8,
   },
 });

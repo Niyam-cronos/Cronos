@@ -6,9 +6,20 @@ import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Clock, KeyRound, Lock, Mail, User } from 'lucide-react';
+import { 
+  Lock, 
+  Mail, 
+  Eye, 
+  EyeOff, 
+  KeyRound, 
+  Clock,
+  Users,
+  LayoutDashboard,
+  ChevronDown
+} from 'lucide-react';
 import { getLoginMethod, loginUser, requestLoginOtp, verifyLoginOtp } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
+import { ChronosLogo } from '@/components/ui/chronos-logo';
 
 const emailSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -27,76 +38,88 @@ type PasswordForm = z.infer<typeof passwordSchema>;
 type OtpForm = z.infer<typeof otpSchema>;
 
 type Step = 'email' | 'password' | 'otp';
+type LangCode = 'en' | 'kn' | 'hi';
 
-function getGreeting() {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning!';
-  if (hour < 17) return 'Good afternoon!';
-  return 'Good evening!';
-}
+const LANGUAGES: Array<{ code: LangCode; name: string; flag: string }> = [
+  { code: 'en', name: 'English', flag: '🇬🇧' },
+  { code: 'kn', name: 'ಕನ್ನಡ', flag: '🇮🇳' },
+  { code: 'hi', name: 'हिंदी', flag: '🇮🇳' },
+];
 
-function BrandPanel() {
-  return (
-    <div className="relative hidden min-h-[520px] flex-1 flex-col justify-between overflow-hidden bg-[#4F6BF7] p-10 text-white md:flex">
-      <div className="flex items-center gap-2">
-        <Clock className="h-7 w-7" strokeWidth={2.5} />
-        <span className="text-xl font-bold tracking-[0.2em]">CRONOS</span>
-      </div>
-
-      <div className="relative mx-auto flex w-full max-w-sm flex-1 items-center justify-center py-8">
-        <div className="absolute left-4 top-8 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
-        <div className="absolute bottom-12 right-6 h-32 w-32 rounded-full bg-[#7B93FF]/40 blur-3xl" />
-
-        <div className="relative">
-          <div className="absolute -left-10 bottom-6 h-28 w-16 rounded-full bg-white/20" />
-          <div className="absolute -right-8 top-10 h-20 w-12 rounded-full bg-white/15" />
-
-          <div className="relative flex h-56 w-56 items-center justify-center rounded-full border-[10px] border-white/90 bg-[#5B7BFA] shadow-2xl">
-            <div className="absolute inset-3 rounded-full border border-white/25" />
-            <div
-              className="absolute left-1/2 top-1/2 h-[72px] w-1 origin-bottom rounded-full bg-white"
-              style={{ transform: 'translate(-50%, -100%) rotate(-35deg)' }}
-            />
-            <div
-              className="absolute left-1/2 top-1/2 h-12 w-1 origin-bottom rounded-full bg-white/90"
-              style={{ transform: 'translate(-50%, -100%) rotate(75deg)' }}
-            />
-            <div className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white" />
-
-            <div className="absolute bottom-12 left-1/2 flex -translate-x-1/2 flex-col items-center">
-              <div className="mb-1 h-9 w-9 rounded-full bg-[#F4B4C4]" />
-              <div className="h-11 w-12 rounded-t-3xl bg-[#F08FA8]" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <p className="text-center text-sm font-light tracking-wide text-white/90">
-        Because every second matters.
-      </p>
-    </div>
-  );
-}
-
-function FieldShell({
-  icon: Icon,
-  children,
-  error,
-}: {
-  icon: typeof Mail;
-  children: React.ReactNode;
-  error?: string;
-}) {
-  return (
-    <div>
-      <div className="flex items-center gap-3 rounded-lg bg-[#F3F4F8] px-4 py-3.5">
-        <Icon className="h-5 w-5 shrink-0 text-[#9CA3AF]" />
-        {children}
-      </div>
-      {error && <p className="mt-1.5 text-sm text-red-600">{error}</p>}
-    </div>
-  );
-}
+const TRANSLATIONS: Record<LangCode, Record<string, string>> = {
+  en: {
+    welcome: 'Welcome!',
+    login: 'Login',
+    subtitle: 'You can login with your email and password.',
+    emailLabel: 'E-mail',
+    emailPlaceholder: 'tina@gyroitsolutions.com',
+    passwordLabel: 'Password',
+    otpLabel: 'Verification Code',
+    otpPlaceholder: '4-digit code',
+    forgotPassword: 'Forgot My Password',
+    resendCode: 'Resend Code',
+    loginBtn: 'Login',
+    authenticating: 'Authenticating...',
+    verifyBtn: 'Verify & Sign In',
+    feature1Title: 'Shift & Attendance',
+    feature1Desc: 'Track employee check-ins and shift schedules in real-time. Automatically process late logs and policy rules.',
+    feature2Title: 'Workforce & Staff',
+    feature2Desc: 'Manage employee profiles, leave balances, and department access permissions in one unified hub.',
+    feature3Title: 'Dashboard & Analytics',
+    feature3Desc: 'Analyze daily attendance metrics, active shifts, and pending approvals with live visual graphs.',
+    previewTitle: 'Chronos Shift Schedule',
+    previewDept: 'Department: Engineering',
+    previewAction: 'Active Shifts →',
+  },
+  kn: {
+    welcome: 'ಸ್ವಾಗತ!',
+    login: 'ಲಾಗಿನ್ ಮಾಡಿ',
+    subtitle: 'ನಿಮ್ಮ ಇಮೇಲ್ ಮತ್ತು ಪಾಸ್‌ವರ್ಡ್ ಬಳಸಿ ಲಾಗಿನ್ ಆಗಬಹುದು.',
+    emailLabel: 'ಇಮೇಲ್ ವಿಳಾಸ',
+    emailPlaceholder: 'tina@gyroitsolutions.com',
+    passwordLabel: 'ಪಾಸ್‌ವರ್ಡ್',
+    otpLabel: 'ಪರಿಶೀಲನೆ ಕೋಡ್',
+    otpPlaceholder: '4-ಅಂಕಿಯ ಕೋಡ್',
+    forgotPassword: 'ಪಾಸ್‌ವರ್ಡ್ ಮರೆತಿರಾ?',
+    resendCode: 'ಕೋಡ್ ಮರುಕಳುಹಿಸಿ',
+    loginBtn: 'ಲಾಗಿನ್ ಮಾಡಿ',
+    authenticating: 'ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ...',
+    verifyBtn: 'ಪರಿಶೀಲಿಸಿ ಮತ್ತು ಪ್ರವೇಶಿಸಿ',
+    feature1Title: 'ಪಾಳಿ ಮತ್ತು ಹಾಜರಾತಿ',
+    feature1Desc: 'ನೌಕರರ ಹಾಜರಾತಿ ಮತ್ತು ಪಾಳಿ ವೇಳಾಪಟ್ಟಿಯನ್ನು ನೈಜ ಸಮಯದಲ್ಲಿ ವೀಕ್ಷಿಸಿ. ತಡವಾದ ಲಾಗ್‌ಗಳು ಮತ್ತು ನೀತಿ ನಿಯಮಗಳನ್ನು ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಪ್ರಕ್ರಿಯೆಗೊಳಿಸಿ.',
+    feature2Title: 'ಸಿಬ್ಬಂದಿ ನಿರ್ವಹಣೆ',
+    feature2Desc: 'ನೌಕರರ ಪ್ರೊಫೈಲ್, ರಜೆ ಬಾಕಿ ಮತ್ತು ಇಲಾಖೆಯ ಪ್ರವೇಶ ಅನುಮತಿಗಳನ್ನು ಒಂದೇ ಸ್ಥಳದಲ್ಲಿ ನಿರ್ವಹಿಸಿ.',
+    feature3Title: 'ಡ್ಯಾಶ್‌ಬೋರ್ಡ್ ಮತ್ತು ವಿಶ್ಲೇಷಣೆ',
+    feature3Desc: 'ದೈನಂದಿನ ಹಾಜರಾತಿ ಅಂಕಿಅಂಶಗಳು ಮತ್ತು ಸಕ್ರಿಯ ಪಾಳಿಗಳನ್ನು ಲೈವ್ ಗ್ರಾಫ್‌ಗಳೊಂದಿಗೆ ವಿಶ್ಲೇಷಿಸಿ.',
+    previewTitle: 'ಕ್ರೋನೋಸ್ ಪಾಳಿ ವೇಳಾಪಟ್ಟಿ',
+    previewDept: 'ಇಲಾಖೆ: ಇಂಜಿನಿಯರಿಂಗ್',
+    previewAction: 'ಸಕ್ರಿಯ ಪಾಳಿಗಳು →',
+  },
+  hi: {
+    welcome: 'स्वागत है!',
+    login: 'लॉगिन करें',
+    subtitle: 'आप अपने ईमेल और पासवर्ड से लॉगिन कर सकते हैं।',
+    emailLabel: 'ईमेल पता',
+    emailPlaceholder: 'tina@gyroitsolutions.com',
+    passwordLabel: 'पासवर्ड',
+    otpLabel: 'सत्यापन कोड',
+    otpPlaceholder: '4-अंकों का कोड',
+    forgotPassword: 'पासवर्ड भूल गए?',
+    resendCode: 'कोड पुनः भेजें',
+    loginBtn: 'लॉगिन करें',
+    authenticating: 'प्रमाणित किया जा रहा है...',
+    verifyBtn: 'सत्यापित करें और प्रवेश करें',
+    feature1Title: 'शिफ्ट और उपस्थिति',
+    feature1Desc: 'कर्मचारियों की उपस्थिति और शिफ्ट समय सारणी को वास्तविक समय में ट्रैक करें। देरी के लॉग और नीति नियमों को स्वचालित रूप से संसाधित करें।',
+    feature2Title: 'कार्यबल और कर्मचारी',
+    feature2Desc: 'कर्मचारी प्रोफ़ाइल, अवकाश शेष और विभाग अनुमतियों को एक ही एकीकृत हब में प्रबंधित करें।',
+    feature3Title: 'डैशबोर्ड और विश्लेषण',
+    feature3Desc: 'लाइव विज़ुअल ग्राफ़ के साथ दैनिक उपस्थिति मीट्रिक, सक्रिय शिफ्ट और लंबित स्वीकृतियों का विश्लेषण करें।',
+    previewTitle: 'क्रोनोस शिफ्ट समय सारणी',
+    previewDept: 'विभाग: इंजीनियरिंग',
+    previewAction: 'सक्रिय शिफ्ट →',
+  },
+};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -105,6 +128,11 @@ export default function LoginPage() {
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [info, setInfo] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [selectedLang, setSelectedLang] = useState(LANGUAGES[0]);
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
+
+  const t = TRANSLATIONS[selectedLang.code];
 
   const emailForm = useForm<EmailForm>({ resolver: zodResolver(emailSchema) });
   const passwordForm = useForm<PasswordForm>({ resolver: zodResolver(passwordSchema) });
@@ -114,10 +142,10 @@ export default function LoginPage() {
     setError('');
     setInfo('');
     try {
-      const method = await getLoginMethod(data.email);
+      const loginMeth = await getLoginMethod(data.email);
       setEmail(data.email);
 
-      if (method === 'otp') {
+      if (loginMeth === 'otp') {
         const result = await requestLoginOtp(data.email);
         setInfo(result.message);
         otpForm.setValue('email', data.email);
@@ -164,28 +192,6 @@ export default function LoginPage() {
     }
   };
 
-  const goBack = () => {
-    setError('');
-    setInfo('');
-    setStep('email');
-  };
-
-  const inputClass =
-    'w-full bg-transparent text-sm text-gray-800 outline-none placeholder:text-[#9CA3AF] disabled:text-gray-500';
-
-  const submitLabel =
-    step === 'email'
-      ? emailForm.formState.isSubmitting
-        ? 'Checking...'
-        : 'Continue'
-      : step === 'password'
-        ? passwordForm.formState.isSubmitting
-          ? 'Signing in...'
-          : 'Sign in'
-        : otpForm.formState.isSubmitting
-          ? 'Verifying...'
-          : 'Sign in';
-
   const isSubmitting =
     step === 'email'
       ? emailForm.formState.isSubmitting
@@ -200,122 +206,352 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#EEF1F8] p-4 md:p-8">
-      <div className="flex w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-[0_20px_60px_rgba(79,107,247,0.15)]">
-        <BrandPanel />
+    <div className="flex min-h-screen w-screen items-center justify-center bg-[#EBF0FA] p-4 md:p-8 font-sans">
+      
+      {/* Outer Floating Card Container */}
+      <div className="flex w-full max-w-6xl overflow-hidden rounded-3xl bg-white shadow-[0_25px_70px_rgba(30,58,138,0.15)] min-h-[660px]">
+        
+        {/* LEFT PANEL: Clean White Login Area */}
+        <div className="flex w-full lg:w-5/12 flex-col justify-between p-8 md:p-12 bg-white relative">
+          <div>
+            
+            {/* Top Row: Brand & Interactive Multi-Language Switcher */}
+            <div className="flex items-center justify-between mb-10">
+              {/* Brand Logo with Custom Vector Attendance Emblem */}
+              <ChronosLogo size="md" />
 
-        <div className="flex w-full flex-1 flex-col justify-center px-8 py-10 md:px-14 md:py-12">
-          <div className="mb-8 flex items-center gap-2 md:hidden">
-            <Clock className="h-6 w-6 text-[#4F6BF7]" />
-            <span className="text-lg font-bold tracking-[0.15em] text-[#4F6BF7]">CRONOS</span>
-          </div>
+              {/* Language Dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setLangMenuOpen(!langMenuOpen)}
+                  className="flex items-center gap-1.5 rounded-full border border-slate-200 px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  <span>{selectedLang.flag} {selectedLang.name}</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                </button>
 
-          <div className="mb-8">
-            <p className="text-2xl font-bold text-gray-900">{getGreeting()}</p>
-            <h1 className="mt-1 text-2xl font-bold text-gray-900">Sign in to Cronos</h1>
-            <p className="mt-3 text-sm leading-relaxed text-gray-500">
-              Enter your access details below to enter the system.
-            </p>
-          </div>
+                {langMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-40 rounded-2xl bg-white p-1.5 shadow-xl border border-slate-100 z-50 animate-in fade-in zoom-in-95">
+                    {LANGUAGES.map((lang) => (
+                      <button
+                        key={lang.code}
+                        type="button"
+                        onClick={() => {
+                          setSelectedLang(lang);
+                          setLangMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-xl transition-colors text-left cursor-pointer ${
+                          selectedLang.code === lang.code
+                            ? 'bg-[#4355FF]/10 text-[#4355FF]'
+                            : 'text-slate-700 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span>{lang.flag}</span>
+                        <span>{lang.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
 
-          {error && (
-            <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
-          )}
-          {info && (
-            <p className="mb-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-800">{info}</p>
-          )}
+            {/* Dynamic Welcome Heading */}
+            <div className="mb-8">
+              <h1 className="text-3xl md:text-4xl font-extrabold text-[#4355FF] tracking-tight">
+                {t.welcome}
+              </h1>
+              <h2 className="text-xl font-bold text-slate-800 mt-4">
+                {t.login}
+              </h2>
+              <p className="text-xs md:text-sm text-slate-500 font-medium mt-1">
+                {t.subtitle}
+              </p>
+            </div>
 
-          <div className="space-y-4">
-            {step === 'email' && (
-              <form onSubmit={emailForm.handleSubmit(onEmailSubmit)} className="space-y-4">
-                <FieldShell icon={User} error={emailForm.formState.errors.email?.message}>
-                  <input
-                    type="email"
-                    placeholder="Email address"
-                    className={inputClass}
-                    {...emailForm.register('email')}
-                  />
-                </FieldShell>
-              </form>
+            {/* Error / Info Alerts */}
+            {error && (
+              <div className="mb-5 rounded-xl bg-red-50 p-3.5 text-xs font-semibold text-red-700 border border-red-200">
+                {error}
+              </div>
+            )}
+            {info && (
+              <div className="mb-5 rounded-xl bg-emerald-50 p-3.5 text-xs font-semibold text-emerald-800 border border-emerald-200">
+                {info}
+              </div>
             )}
 
-            {step === 'password' && (
-              <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
-                <FieldShell icon={Mail}>
-                  <input type="email" value={email} disabled className={inputClass} />
-                </FieldShell>
-                <FieldShell icon={Lock} error={passwordForm.formState.errors.password?.message}>
-                  <input
-                    type="password"
-                    placeholder="Password"
-                    className={inputClass}
-                    {...passwordForm.register('password')}
-                  />
-                </FieldShell>
-              </form>
-            )}
+            {/* Input Form Fields */}
+            <div className="space-y-4">
+              {step === 'email' && (
+                <form onSubmit={emailForm.handleSubmit(onEmailSubmit)} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+                      {t.emailLabel}
+                    </label>
+                    <div className="rounded-xl bg-[#F2F4F8] px-4 py-3.5 border border-transparent focus-within:border-[#4355FF] focus-within:bg-white transition-all">
+                      <input
+                        type="email"
+                        placeholder={t.emailPlaceholder}
+                        className="w-full bg-transparent text-sm font-bold text-slate-800 outline-none placeholder:text-slate-400"
+                        {...emailForm.register('email')}
+                      />
+                    </div>
+                    {emailForm.formState.errors.email && (
+                      <p className="mt-1 text-xs text-red-600 font-semibold">
+                        {emailForm.formState.errors.email.message}
+                      </p>
+                    )}
+                  </div>
+                </form>
+              )}
 
-            {step === 'otp' && (
-              <form onSubmit={otpForm.handleSubmit(onOtpSubmit)} className="space-y-4">
-                <FieldShell icon={Mail}>
-                  <input type="email" value={email} disabled className={inputClass} />
-                </FieldShell>
-                <FieldShell icon={KeyRound} error={otpForm.formState.errors.otp?.message}>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={4}
-                    placeholder="4-digit code"
-                    autoComplete="one-time-code"
-                    className={inputClass}
-                    {...otpForm.register('otp')}
-                  />
-                </FieldShell>
-              </form>
-            )}
-          </div>
+              {step === 'password' && (
+                <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+                      {t.emailLabel}
+                    </label>
+                    <div className="rounded-xl bg-[#F2F4F8] px-4 py-3.5">
+                      <input
+                        type="email"
+                        value={email}
+                        disabled
+                        className="w-full bg-transparent text-sm font-bold text-slate-600 outline-none"
+                      />
+                    </div>
+                  </div>
 
-          <div className="mt-8 flex items-center justify-between gap-4">
-            <div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+                      {t.passwordLabel}
+                    </label>
+                    <div className="relative flex items-center rounded-xl bg-[#F2F4F8] px-4 py-3.5 border border-transparent focus-within:border-[#4355FF] focus-within:bg-white transition-all">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        className="w-full bg-transparent text-sm font-bold text-slate-800 outline-none tracking-widest placeholder:text-slate-400"
+                        {...passwordForm.register('password')}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="text-slate-400 hover:text-slate-700 focus:outline-none"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    {passwordForm.formState.errors.password && (
+                      <p className="mt-1 text-xs text-red-600 font-semibold">
+                        {passwordForm.formState.errors.password.message}
+                      </p>
+                    )}
+                  </div>
+                </form>
+              )}
+
+              {step === 'otp' && (
+                <form onSubmit={otpForm.handleSubmit(onOtpSubmit)} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+                      {t.emailLabel}
+                    </label>
+                    <div className="rounded-xl bg-[#F2F4F8] px-4 py-3.5">
+                      <input
+                        type="email"
+                        value={email}
+                        disabled
+                        className="w-full bg-transparent text-sm font-bold text-slate-600 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+                      {t.otpLabel}
+                    </label>
+                    <div className="relative flex items-center rounded-xl bg-[#F2F4F8] px-4 py-3.5 border border-transparent focus-within:border-[#4355FF] focus-within:bg-white transition-all">
+                      <KeyRound className="h-4 w-4 text-slate-400 mr-2 shrink-0" />
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={4}
+                        placeholder={t.otpPlaceholder}
+                        autoComplete="one-time-code"
+                        className="w-full bg-transparent text-sm font-bold text-slate-800 outline-none tracking-widest placeholder:text-slate-400"
+                        {...otpForm.register('otp')}
+                      />
+                    </div>
+                    {otpForm.formState.errors.otp && (
+                      <p className="mt-1 text-xs text-red-600 font-semibold">
+                        {otpForm.formState.errors.otp.message}
+                      </p>
+                    )}
+                  </div>
+                </form>
+              )}
+            </div>
+
+            {/* Forgot Password Link */}
+            <div className="flex justify-end pt-2">
               {step === 'password' ? (
-                <Link href="/forgot-password" className="text-sm font-medium text-[#4F6BF7] hover:underline">
-                  Forgot password?
+                <Link href="/forgot-password" className="text-xs font-semibold text-slate-500 hover:text-[#4355FF]">
+                  {t.forgotPassword}
                 </Link>
               ) : step === 'otp' ? (
                 <button
                   type="button"
                   onClick={resendOtp}
-                  className="text-sm font-medium text-[#4F6BF7] hover:underline"
+                  className="text-xs font-semibold text-slate-500 hover:text-[#4355FF]"
                 >
-                  Resend code
+                  {t.resendCode}
                 </button>
               ) : (
                 <span />
               )}
             </div>
 
-            <div className="flex items-center gap-3">
-              {step !== 'email' && (
-                <button
-                  type="button"
-                  onClick={goBack}
-                  className="text-sm font-medium text-gray-500 hover:text-gray-800"
-                >
-                  Back
-                </button>
-              )}
+            {/* Primary Blue Action Button */}
+            <div className="pt-6">
               <button
                 type="button"
                 onClick={handlePrimarySubmit}
                 disabled={isSubmitting}
-                className="rounded-lg bg-[#4F6BF7] px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-[#4F6BF7]/30 transition hover:bg-[#4560e8] disabled:opacity-60"
+                className="w-full rounded-xl bg-[#4355FF] py-3.5 text-sm font-bold text-white shadow-lg shadow-[#4355FF]/30 transition-all hover:bg-[#3444ea] active:scale-[0.99] disabled:opacity-60 cursor-pointer"
               >
-                {submitLabel}
+                {isSubmitting
+                  ? t.authenticating
+                  : step === 'email'
+                  ? t.loginBtn
+                  : step === 'password'
+                  ? t.loginBtn
+                  : t.verifyBtn}
               </button>
             </div>
+
           </div>
         </div>
+
+        {/* RIGHT PANEL: Vibrant Royal Blue Showcase Area */}
+        <div className="relative hidden lg:flex w-7/12 flex-col justify-between p-12 bg-gradient-to-br from-[#4A5DFF] to-[#3B4BEA] text-white overflow-hidden">
+          
+          {/* Geometric Translucent Background Elements */}
+          <div className="absolute top-10 right-10 h-32 w-32 rounded-full border-8 border-white/10" />
+          <div className="absolute top-1/3 left-[-30px] h-20 w-44 rounded-full bg-white/10 blur-sm" />
+          <div className="absolute bottom-10 left-12 h-36 w-36 rounded-full border-8 border-white/10" />
+          <div className="absolute bottom-1/4 right-[-20px] h-24 w-52 rounded-full bg-white/10" />
+
+          {/* Feature Highlight List & Dashboard Preview Container */}
+          <div className="relative z-10 grid grid-cols-12 gap-6 items-center my-auto">
+            
+            {/* Feature List */}
+            <div className="col-span-6 space-y-8 pr-2">
+              
+              {/* Feature 1 */}
+              <div className="space-y-2">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-[#4355FF] shadow-md">
+                  <Clock className="h-5 w-5 stroke-[2.5]" />
+                </div>
+                <h3 className="text-lg font-extrabold text-white">
+                  {t.feature1Title}
+                </h3>
+                <p className="text-xs text-white/80 leading-relaxed font-normal">
+                  {t.feature1Desc}
+                </p>
+              </div>
+
+              {/* Feature 2 */}
+              <div className="space-y-2">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#4355FF] border border-white/30 text-white shadow-md">
+                  <Users className="h-5 w-5 stroke-[2.5]" />
+                </div>
+                <h3 className="text-lg font-extrabold text-white">
+                  {t.feature2Title}
+                </h3>
+                <p className="text-xs text-white/80 leading-relaxed font-normal">
+                  {t.feature2Desc}
+                </p>
+              </div>
+
+              {/* Feature 3 */}
+              <div className="space-y-2">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-[#4355FF] shadow-md">
+                  <LayoutDashboard className="h-5 w-5 stroke-[2.5]" />
+                </div>
+                <h3 className="text-lg font-extrabold text-white">
+                  {t.feature3Title}
+                </h3>
+                <p className="text-xs text-white/80 leading-relaxed font-normal">
+                  {t.feature3Desc}
+                </p>
+              </div>
+
+            </div>
+
+            {/* Dashboard UI Preview Graphic */}
+            <div className="col-span-6 relative">
+              <div className="rounded-2xl bg-white/95 p-4 shadow-2xl text-slate-800 border border-white/40 transform translate-x-3 rotate-1 hover:rotate-0 transition-transform duration-300">
+                
+                {/* Header bar inside preview */}
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3 text-[10px] font-bold text-slate-500">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    <span>{t.previewTitle}</span>
+                  </div>
+                  <div className="flex items-center gap-3 font-mono text-[9px]">
+                    <span>09:00</span>
+                    <span className="bg-blue-100 text-blue-700 px-1 rounded">11:00</span>
+                    <span>13:00</span>
+                  </div>
+                </div>
+
+                {/* Table Rows preview */}
+                <div className="space-y-2.5 text-[10px]">
+                  <div className="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                    <div>
+                      <p className="font-extrabold text-slate-900">Dev Shift 1</p>
+                      <p className="text-[9px] text-slate-400">4 Staff</p>
+                    </div>
+                    <span className="bg-blue-500 text-white text-[9px] px-2.5 py-0.5 rounded font-semibold">
+                      Tina Gyroit
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                    <div>
+                      <p className="font-extrabold text-slate-900">Ops Shift 2</p>
+                      <p className="text-[9px] text-slate-400">2 Staff</p>
+                    </div>
+                    <span className="bg-amber-500 text-white text-[9px] px-2.5 py-0.5 rounded font-semibold">
+                      Yunus Bulut
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                    <div>
+                      <p className="font-extrabold text-slate-900">Support Shift</p>
+                      <p className="text-[9px] text-slate-400">6 Staff</p>
+                    </div>
+                    <span className="bg-emerald-500 text-white text-[9px] px-2.5 py-0.5 rounded font-semibold">
+                      Melike Arslan
+                    </span>
+                  </div>
+                </div>
+
+                {/* Footer preview */}
+                <div className="mt-3 border-t border-slate-100 pt-2 flex items-center justify-between text-[9px] font-semibold text-slate-400">
+                  <span>{t.previewDept}</span>
+                  <span className="text-[#4355FF] font-bold">{t.previewAction}</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
       </div>
+
     </div>
   );
 }

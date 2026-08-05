@@ -1,14 +1,25 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { APP } from '@/constants';
+import { ChronosLogo } from '@/components/brand/ChronosLogo';
+import { useAuth } from '@/contexts';
 import { colors } from '@/theme';
 
 export function HomeScreen() {
+  const { user, logout } = useAuth();
+
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
-      <Text style={styles.title}>{APP.name}</Text>
-      <Text style={styles.subtitle}>{APP.subtitle}</Text>
+      <ChronosLogo size="md" />
+      <Text style={styles.greeting}>
+        Welcome, {user?.firstName ?? 'there'}!
+      </Text>
+      <Text style={styles.subtitle}>Workforce Attendance & HRMS</Text>
+      <Text style={styles.email}>{user?.email}</Text>
+
+      <Pressable style={styles.logoutBtn} onPress={logout}>
+        <Text style={styles.logoutText}>Sign out</Text>
+      </Pressable>
     </View>
   );
 }
@@ -20,15 +31,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
+    gap: 8,
   },
-  title: {
-    fontSize: 28,
+  greeting: {
+    marginTop: 24,
+    fontSize: 24,
     fontWeight: '700',
     color: colors.textPrimary,
   },
   subtitle: {
-    marginTop: 8,
     fontSize: 15,
     color: colors.textSecondary,
+  },
+  email: {
+    fontSize: 13,
+    color: colors.textSlate,
+    marginTop: 4,
+  },
+  logoutBtn: {
+    marginTop: 32,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: colors.brand,
+  },
+  logoutText: {
+    color: colors.white,
+    fontWeight: '700',
+    fontSize: 14,
   },
 });

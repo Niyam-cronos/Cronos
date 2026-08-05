@@ -5,7 +5,14 @@ export type AuthUser = {
   email: string;
   firstName: string;
   lastName: string;
-  role: UserRole;
+  companyId: string | null;
+  roles: string[];
+  permissions: string[];
 };
 
 export type LoginMethod = 'password' | 'otp';
+
+export type AuthTokens = {
+  accessToken: string;
+  refreshToken: string;
+};

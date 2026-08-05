@@ -57,3 +57,52 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  .bg-diamond-pattern {
+    background-color: #f7f9fc;
+    background-image: radial-gradient(#d5dbf0 1.2px, transparent 1.2px), radial-gradient(#d5dbf0 1.2px, #f7f9fc 1.2px);
+    background-size: 24px 24px;
+    background-position: 0 0, 12px 12px;
+  }
+
+  .shadow-yellow-btn {
+    box-shadow: 2px 3px 0px 1.5px #18191c;
+  }
+
+  .shadow-yellow-btn:hover {
+    box-shadow: 1px 1px 0px 1px #18191c;
+    transform: translateY(1px);
+  }
+
+  .shadow-pill-btn {
+    box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  .shadow-card-float {
+    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.15), 0 0 1px rgba(0, 0, 0, 0.1);
+  }
+  
+  .shadow-emp-card {
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35);
+  }
+}
+
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(0.5deg); }
+}
+
+@keyframes floatDelayed {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(6px) rotate(-0.5deg); }
+}
+
+.animate-float {
+  animation: floatSlow 6s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: floatDelayed 7s ease-in-out 1s infinite;
+}
+

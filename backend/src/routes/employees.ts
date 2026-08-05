@@ -114,7 +114,7 @@ employeesRouter.post(
         const loginUrl = `${loadEnv().WEB_URL}/login`;
         await queueEmail({
           to: employee.email,
-          subject: 'Welcome to Cronos HRMS',
+          subject: 'Welcome to Chronos HRMS',
           html: buildWelcomeEmail(
             employee.firstName,
             employee.email,

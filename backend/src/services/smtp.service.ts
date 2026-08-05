@@ -131,16 +131,16 @@ export async function sendSmtpTestEmail(companyId: string, testEmail?: string): 
   const transport = createSmtpTransport(config);
 
   const result = await transport.sendMail({
-    from: `"${config.fromName ?? 'Cronos HR'}" <${config.fromEmail}>`,
+    from: `"${config.fromName ?? 'Chronos HR'}" <${config.fromEmail}>`,
     to,
     replyTo: config.replyTo ?? config.fromEmail,
-    subject: 'Cronos SMTP Test — Configuration Successful',
+    subject: 'Chronos SMTP Test — Configuration Successful',
     html: `
       <h2>SMTP Configured Successfully</h2>
-      <p>Your Cronos HRMS email settings are working correctly.</p>
+      <p>Your Chronos HRMS email settings are working correctly.</p>
       <p>Emails such as password resets, leave notifications, and welcome messages will be sent from <strong>${config.fromEmail}</strong>.</p>
     `,
-    text: 'SMTP configured successfully. Your Cronos HRMS can now send emails.',
+    text: 'SMTP configured successfully. Your Chronos HRMS can now send emails.',
   });
 
   return to;
@@ -155,7 +155,7 @@ export async function sendWithCompanySmtp(
 
   const transport = createSmtpTransport(config);
   const result = await transport.sendMail({
-    from: `"${config.fromName ?? 'Cronos'}" <${config.fromEmail}>`,
+    from: `"${config.fromName ?? 'Chronos'}" <${config.fromEmail}>`,
     replyTo: config.replyTo ?? config.fromEmail,
     to: options.to,
     subject: options.subject,

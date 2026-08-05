@@ -1,2 +1,2 @@
 export { CronosBrandSplash } from './CronosBrandSplash';
-export { CronosClockArt } from './CronosClockArt';
+export { ChronosLogo } from './ChronosLogo';

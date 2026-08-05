@@ -51,7 +51,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       >
         <div className="flex h-16 items-center gap-2 border-b px-6">
           <Building2 className="h-6 w-6 text-primary" />
-          <span className="text-lg font-bold">Cronos</span>
+          <span className="text-lg font-bold">Chronos</span>
         </div>
         <nav className="space-y-1 p-4">
           {nav.map((item) => (
@@ -92,7 +92,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <button onClick={() => setOpen(!open)}>
             <Menu className="h-6 w-6" />
           </button>
-          <span className="font-bold">Cronos</span>
+          <span className="font-bold">Chronos</span>
         </header>
         <main className="flex-1 p-6">{children}</main>
       </div>

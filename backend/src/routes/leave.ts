@@ -147,7 +147,7 @@ leaveRouter.patch(
 
     await queueEmail({
       to: leave.employee.email,
-      subject: `Leave request ${req.body.status} — Cronos`,
+      subject: `Leave request ${req.body.status} — Chronos`,
       html: buildLeaveStatusEmail(
         leave.employee.firstName,
         req.body.status,

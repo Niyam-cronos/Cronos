@@ -6,7 +6,7 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Cronos — Workforce Attendance & HRMS',
+  title: 'Chronos — Workforce Attendance & HRMS',
   description: 'Enterprise workforce attendance and HR management platform',
 };
 

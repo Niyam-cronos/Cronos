@@ -60,7 +60,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<{ messageId:
 
 export function buildPasswordResetEmail(name: string, resetUrl: string): string {
   return `
-    <h2>Password Reset — Cronos</h2>
+    <h2>Password Reset — Chronos</h2>
     <p>Hi ${name},</p>
     <p>Click the link below to reset your password. This link expires in 1 hour.</p>
     <p><a href="${resetUrl}">${resetUrl}</a></p>
@@ -70,7 +70,7 @@ export function buildPasswordResetEmail(name: string, resetUrl: string): string 
 
 export function buildLoginOtpEmail(name: string, otp: string): string {
   return `
-    <h2>Your Cronos Login Code</h2>
+    <h2>Your Chronos Login Code</h2>
     <p>Hi ${name},</p>
     <p>Use this 4-digit code to sign in. It expires in 10 minutes.</p>
     <p style="font-size: 28px; font-weight: bold; letter-spacing: 6px;">${otp}</p>
@@ -91,7 +91,7 @@ export function buildLeaveStatusEmail(
       ? `<p><strong>Paid leave:</strong> ${paidDays} day(s)<br/><strong>Loss of pay:</strong> ${lopDays} day(s)</p>`
       : '';
   return `
-    <h2>Leave Request ${status} — Cronos</h2>
+    <h2>Leave Request ${status} — Chronos</h2>
     <p>Hi ${name},</p>
     <p>Your leave request from <strong>${startDate}</strong> to <strong>${endDate}</strong> has been <strong>${status}</strong>.</p>
     ${splitInfo}
@@ -128,8 +128,8 @@ export function buildLeaveApplicationHrEmail(params: {
   } = params;
 
   const reviewLink = reviewUrl
-    ? `<p><a href="${reviewUrl}">Open Leave page in Cronos</a> to approve or reject this request.</p>`
-    : `<p>Log in to Cronos → <strong>Leave</strong> to approve or reject this request.</p>`;
+    ? `<p><a href="${reviewUrl}">Open Leave page in Chronos</a> to approve or reject this request.</p>`
+    : `<p>Log in to Chronos → <strong>Leave</strong> to approve or reject this request.</p>`;
 
   return `
     <h2>New Leave Application — ${employeeName}</h2>
@@ -151,14 +151,14 @@ export function buildLeaveApplicationHrEmail(params: {
 
 export function buildWelcomeEmail(name: string, email: string, tempPassword: string, loginUrl: string): string {
   return `
-    <h2>Welcome to Cronos HRMS</h2>
+    <h2>Welcome to Chronos HRMS</h2>
     <p>Hi ${name},</p>
     <p>Your account has been created. Use the credentials below to sign in:</p>
     <ul>
       <li><strong>Email:</strong> ${email}</li>
       <li><strong>Temporary password:</strong> ${tempPassword}</li>
     </ul>
-    <p><a href="${loginUrl}">Sign in to Cronos</a></p>
+    <p><a href="${loginUrl}">Sign in to Chronos</a></p>
     <p>Please change your password after your first login.</p>
   `;
 }
@@ -179,7 +179,7 @@ export function buildAttendanceAlertEmail(
 
 export function buildAttendanceReminderEmail(name: string): string {
   return `
-    <h2>Attendance Reminder — Cronos</h2>
+    <h2>Attendance Reminder — Chronos</h2>
     <p>Hi ${name},</p>
     <p>You haven't checked in today. Please mark your attendance.</p>
   `;

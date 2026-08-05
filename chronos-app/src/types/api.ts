@@ -1,9 +1,11 @@
+export type ApiEnvelope<T> = {
+  success: boolean;
+  data?: T;
+  message?: string;
+  error?: string;
+};
+
 export type ApiError = {
   message: string;
   status?: number;
-};
-
-export type ApiResponse<T> = {
-  data?: T;
-  error?: ApiError;
 };

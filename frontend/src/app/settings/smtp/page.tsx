@@ -41,7 +41,7 @@ export default function SmtpSettingsPage() {
     fromName: GMAIL_DEFAULTS.fromName,
     replyTo: GMAIL_DEFAULTS.replyTo,
     useTls: GMAIL_DEFAULTS.useTls,
-    status: GMAIL_DEFAULTS.status,
+    status: GMAIL_DEFAULTS.status as string,
   });
   const [testEmail, setTestEmail] = useState(GMAIL_DEFAULTS.username);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);

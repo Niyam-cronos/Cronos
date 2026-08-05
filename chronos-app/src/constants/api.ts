@@ -9,6 +9,7 @@ export const API_PATHS = {
     requestOtp: '/api/v1/auth/request-otp',
     verifyOtp: '/api/v1/auth/verify-otp',
     login: '/api/v1/auth/login',
+    refresh: '/api/v1/auth/refresh',
     me: '/api/v1/auth/me',
   },
 } as const;

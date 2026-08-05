@@ -75,7 +75,7 @@ export default function DashboardPage() {
     );
   }
 
-  const staffData = data?.view === 'staff' ? data : null;
+  const staffData = data && data.view === 'staff' ? data : null;
   const cards = [
     { label: 'Employees', value: staffData?.totalEmployees },
     { label: 'Present Today', value: staffData?.presentToday },

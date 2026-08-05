@@ -1,4 +1,1 @@
-/**
- * Auth screens (login, OTP) will be added here.
- */
-export {};
+export { LoginScreen } from './LoginScreen';

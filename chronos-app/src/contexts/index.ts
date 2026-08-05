@@ -1,4 +1,1 @@
-/**
- * Auth context (session, user) will be added here.
- */
-export {};
+export { AuthProvider, useAuth } from './AuthContext';

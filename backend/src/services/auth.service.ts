@@ -141,7 +141,7 @@ export async function requestLoginOtp(email: string) {
 
   await queueEmail({
     to: user.email,
-    subject: 'Your Cronos login code',
+    subject: 'Your Chronos login code',
     html: buildLoginOtpEmail(user.firstName, code),
     companyId: user.companyId ?? undefined,
   });
@@ -248,7 +248,7 @@ export async function forgotPassword(email: string) {
 
   await queueEmail({
     to: user.email,
-    subject: 'Reset your Cronos password',
+    subject: 'Reset your Chronos password',
     html: buildPasswordResetEmail(user.firstName, resetUrl),
     companyId: user.companyId ?? undefined,
   });

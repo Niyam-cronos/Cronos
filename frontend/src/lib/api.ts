@@ -5,11 +5,26 @@ import type { AuthUser } from './types';
 export const api = createApiClient({
   baseUrl: getApiUrl(),
   getAccessToken: () => getStoredTokens()?.accessToken ?? null,
-  onUnauthorized: () => {
-    clearStoredTokens();
-    if (typeof window !== 'undefined') window.location.href = '/login';
-  },
 });
+
+async function refreshTokens(): Promise<boolean> {
+  const tokens = getStoredTokens();
+  if (!tokens?.refreshToken) return false;
+
+  const response = await fetch(`${getApiUrl()}/api/v1/auth/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken: tokens.refreshToken }),
+  });
+
+  const json = await response.json();
+  if (!json.success || !json.data?.accessToken || !json.data?.refreshToken) {
+    return false;
+  }
+
+  setStoredTokens(json.data.accessToken, json.data.refreshToken);
+  return true;
+}
 
 export async function loginUser(email: string, password: string) {
   const res = await api.login(email, password);
@@ -53,8 +68,23 @@ export async function logoutUser() {
 }
 
 export async function fetchMe(): Promise<AuthUser> {
-  const res = await api.me();
-  if (!res.success || !res.data) throw new Error(res.error || 'Not authenticated');
+  if (!getStoredTokens()) {
+    throw new Error('Not authenticated');
+  }
+
+  let res = await api.me();
+  if ((!res.success || !res.data) && getStoredTokens()) {
+    const refreshed = await refreshTokens();
+    if (refreshed) {
+      res = await api.me();
+    }
+  }
+
+  if (!res.success || !res.data) {
+    clearStoredTokens();
+    throw new Error(res.error || 'Not authenticated');
+  }
+
   return res.data;
 }
 
